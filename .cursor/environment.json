@@ -1,6 +1,6 @@
 {
   "name": "9router-app",
-  "install": "npm install",
+  "install": "npm install && npm --prefix tests install",
   "terminals": [
     {
       "name": "dev-server",
