@@ -310,6 +310,7 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
     connectionProxyUrl: credentials?.providerSpecificData?.connectionProxyUrl || "",
     connectionNoProxy: credentials?.providerSpecificData?.connectionNoProxy || "",
     vercelRelayUrl: credentials?.providerSpecificData?.vercelRelayUrl || "",
+    relaySecret: credentials?.providerSpecificData?.relaySecret || "",
   };
 
   if (proxyOptions.vercelRelayUrl) {

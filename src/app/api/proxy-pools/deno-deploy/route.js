@@ -1,62 +1,43 @@
 import { NextResponse } from "next/server";
 import { createProxyPool } from "@/models";
+import {
+  buildRelayWorkerSource,
+  generateRelaySecret,
+  normalizeDenoOrgDomain,
+  normalizeRelayAppName,
+  publicProxyPool,
+  resolveDenoRelayUrl,
+} from "@/lib/network/edgeRelay";
 
 const DENO_V2_API = "https://api.deno.com/v2";
 
-const DENO_RELAY_CODE = `Deno.serve(async (request) => {
-  const target = request.headers.get("x-relay-target");
-  const relayPath = request.headers.get("x-relay-path") || "/";
+function jsonError(message, status = 400) {
+  return NextResponse.json({ error: message }, { status });
+}
 
-  if (!target) {
-    return new Response(JSON.stringify({ error: "Missing x-relay-target header" }), {
-      status: 400,
-      headers: { "content-type": "application/json" },
-    });
-  }
-
-  const targetUrl = target.replace(/\\/$/, "") + relayPath;
-  const newHeaders = new Headers(request.headers);
-  newHeaders.delete("x-relay-target");
-  newHeaders.delete("x-relay-path");
-  newHeaders.delete("host");
-
-  const init = {
-    method: request.method,
-    headers: newHeaders,
-  };
-
-  if (request.method !== "GET" && request.method !== "HEAD") {
-    init.body = request.body;
-    init.duplex = "half";
-  }
-
-  try {
-    const response = await fetch(targetUrl, init);
-    return new Response(response.body, {
-      status: response.status,
-      headers: response.headers,
-    });
-  } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 502,
-      headers: { "content-type": "application/json" },
-    });
-  }
-});`;
+async function deleteDenoApp(appId, denoToken) {
+  if (!appId) return;
+  await fetch(`${DENO_V2_API}/apps/${encodeURIComponent(appId)}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${denoToken}` },
+  }).catch(() => {});
+}
 
 export async function POST(request) {
   try {
     const body = await request.json();
-    const denoToken = body.denoToken?.trim();
-    const orgDomain = body.orgDomain?.trim();
-    const projectName = body.projectName?.trim() || `relay-${Date.now().toString(36)}`;
+    const denoToken = typeof body.denoToken === "string" ? body.denoToken.trim() : "";
+    const orgDomain = normalizeDenoOrgDomain(body.orgDomain);
+    const projectName = normalizeRelayAppName(body.projectName);
 
     if (!orgDomain) {
-      return NextResponse.json({ error: "Organization domain is required" }, { status: 400 });
+      return jsonError("Organization domain must look like your-org.deno.net");
     }
-
     if (!denoToken) {
-      return NextResponse.json({ error: "Deno Deploy API token is required" }, { status: 400 });
+      return jsonError("Deno Deploy API token is required");
+    }
+    if (!projectName) {
+      return jsonError("App name must be lowercase letters, numbers, and hyphens");
     }
 
     const headers = {
@@ -81,29 +62,24 @@ export async function POST(request) {
     });
 
     if (!createAppRes.ok) {
-      const text = await createAppRes.text().catch(() => "");
       if (createAppRes.status === 409) {
-        return NextResponse.json(
-          { error: `App "${projectName}" already exists. Choose a different name.` },
-          { status: 409 }
-        );
+        return jsonError(`App "${projectName}" already exists. Choose a different name.`, 409);
       }
-      return NextResponse.json(
-        { error: `Failed to create app (${createAppRes.status}): ${text}` },
-        { status: createAppRes.status }
-      );
+      return jsonError("Failed to create Deno app", createAppRes.status >= 400 ? createAppRes.status : 502);
     }
 
-    const app = await createAppRes.json();
+    const app = await createAppRes.json().catch(() => ({}));
+    const relaySecret = generateRelaySecret();
+    const relayCode = buildRelayWorkerSource({ runtime: "deno", secret: relaySecret });
 
-    const deployRes = await fetch(`${DENO_V2_API}/apps/${app.id}/deploy`, {
+    const deployRes = await fetch(`${DENO_V2_API}/apps/${encodeURIComponent(app.id)}/deploy`, {
       method: "POST",
       headers,
       body: JSON.stringify({
         assets: {
           "main.ts": {
             kind: "file",
-            content: DENO_RELAY_CODE,
+            content: relayCode,
             encoding: "utf-8",
           },
         },
@@ -111,52 +87,56 @@ export async function POST(request) {
     });
 
     if (!deployRes.ok) {
-      const text = await deployRes.text().catch(() => "");
-      console.error("Deno Deploy error:", deployRes.status, text);
-      await fetch(`${DENO_V2_API}/apps/${app.id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${denoToken}` },
-      }).catch(() => {});
-      return NextResponse.json(
-        { error: `Deploy failed (${deployRes.status}): ${text}` },
-        { status: deployRes.status }
-      );
+      console.error("Deno Deploy error:", deployRes.status);
+      await deleteDenoApp(app.id, denoToken);
+      return jsonError("Deploy failed", deployRes.status >= 400 ? deployRes.status : 502);
     }
 
-    const revision = await deployRes.json();
+    const revision = await deployRes.json().catch(() => ({}));
     const revisionId = revision.id;
 
     let status = revision.status;
     let attempts = 0;
-    const maxAttempts = 30; // 30 * 2s = 60s max
+    const maxAttempts = 30;
+    let latestRevision = revision;
     while (status === "queued" || status === "building") {
       if (attempts >= maxAttempts) {
-        throw new Error("Deploy timed out after 60 seconds");
+        await deleteDenoApp(app.id, denoToken);
+        return jsonError("Deploy timed out", 500);
       }
       await new Promise((resolve) => setTimeout(resolve, 2000));
-      const statusRes = await fetch(`${DENO_V2_API}/revisions/${revisionId}`, {
+      const statusRes = await fetch(`${DENO_V2_API}/revisions/${encodeURIComponent(revisionId)}`, {
         headers: { Authorization: `Bearer ${denoToken}` },
       });
       if (!statusRes.ok) break;
-      const statusData = await statusRes.json();
-      status = statusData.status;
+      latestRevision = await statusRes.json().catch(() => latestRevision);
+      status = latestRevision.status;
       attempts++;
     }
 
     if (status !== "succeeded") {
-      await fetch(`${DENO_V2_API}/apps/${app.id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${denoToken}` },
-      }).catch(() => {});
-      return NextResponse.json(
-        { error: `Deploy failed with status: ${status}` },
-        { status: 500 }
-      );
+      await deleteDenoApp(app.id, denoToken);
+      return jsonError("Deploy failed", 500);
     }
 
-    const orgSlug = orgDomain.split(".")[0];
-    const deployUrl = `https://${projectName}.${orgSlug}.deno.net`;
-    console.log("Deno deployUrl:", deployUrl);
+    let latestApp = app;
+    const appRes = await fetch(`${DENO_V2_API}/apps/${encodeURIComponent(app.id)}`, {
+      headers: { Authorization: `Bearer ${denoToken}` },
+    });
+    if (appRes.ok) {
+      latestApp = await appRes.json().catch(() => app);
+    }
+
+    const deployUrl = resolveDenoRelayUrl({
+      app: latestApp,
+      revision: latestRevision,
+      projectName,
+      orgDomain,
+    });
+    if (!deployUrl) {
+      await deleteDenoApp(app.id, denoToken);
+      return jsonError("Deploy succeeded but the Deno URL could not be verified");
+    }
 
     const proxyPool = await createProxyPool({
       name: projectName,
@@ -165,11 +145,12 @@ export async function POST(request) {
       noProxy: "",
       isActive: true,
       strictProxy: false,
+      relaySecret,
     });
 
-    return NextResponse.json({ proxyPool, deployUrl }, { status: 201 });
+    return NextResponse.json({ proxyPool: publicProxyPool(proxyPool), deployUrl }, { status: 201 });
   } catch (error) {
     console.log("Error deploying Deno Deploy relay:", error);
-    return NextResponse.json({ error: error.message || "Deploy failed" }, { status: 500 });
+    return jsonError("Deploy failed", 500);
   }
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createProxyPool, getProviderConnections, getProxyPools } from "@/models";
+import { publicProxyPool } from "@/lib/network/edgeRelay";
 
 function toBoolean(value) {
   if (value === "true") return true;
@@ -56,14 +57,14 @@ export async function GET(request) {
     const proxyPools = await getProxyPools(filter);
 
     if (!includeUsage) {
-      return NextResponse.json({ proxyPools });
+      return NextResponse.json({ proxyPools: proxyPools.map(publicProxyPool) });
     }
 
     const connections = await getProviderConnections();
     const usageMap = buildUsageMap(connections);
 
     const enrichedProxyPools = proxyPools.map((pool) => ({
-      ...pool,
+      ...publicProxyPool(pool),
       boundConnectionCount: usageMap.get(pool.id) || 0,
     }));
 
@@ -85,7 +86,7 @@ export async function POST(request) {
     }
 
     const proxyPool = await createProxyPool(normalized);
-    return NextResponse.json({ proxyPool }, { status: 201 });
+    return NextResponse.json({ proxyPool: publicProxyPool(proxyPool) }, { status: 201 });
   } catch (error) {
     console.log("Error creating proxy pool:", error);
     return NextResponse.json({ error: "Failed to create proxy pool" }, { status: 500 });
