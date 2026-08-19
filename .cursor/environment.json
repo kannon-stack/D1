@@ -1,0 +1,17 @@
+{
+  "name": "9router-app",
+  "install": "npm install",
+  "terminals": [
+    {
+      "name": "dev-server",
+      "command": "PORT=20127 NEXT_PUBLIC_BASE_URL=http://localhost:20127 BASE_URL=http://localhost:20127 npm run dev",
+      "description": "9Router Next.js dev server (dashboard at /dashboard, OpenAI-compatible API at /v1) on http://localhost:20127"
+    }
+  ],
+  "ports": [
+    {
+      "name": "9router dashboard + /v1 API",
+      "port": 20127
+    }
+  ]
+}
