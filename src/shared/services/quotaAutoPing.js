@@ -7,7 +7,7 @@ import { getCodexUsage } from "open-sse/services/usage/codex.js";
 import { getExecutor } from "open-sse/executors/index.js";
 import { CLAUDE_CLI_SPOOF_HEADERS } from "open-sse/providers/shared.js";
 import { proxyAwareFetch } from "open-sse/utils/proxyFetch.js";
-import { resolveConnectionProxyConfig } from "@/lib/network/connectionProxy";
+import { resolveConnectionProxyConfig, toProxyFetchOptions } from "@/lib/network/connectionProxy";
 import { refreshAndUpdateCredentials } from "@/app/api/usage/[connectionId]/route.js";
 import { QUOTA_AUTOPING_CONFIG } from "@/shared/constants/config";
 
@@ -94,13 +94,7 @@ function shouldPingForReset(providerConfig, cachedReset, resetAt, now) {
 }
 
 function buildProxyOptions(cfg) {
-  return {
-    connectionProxyEnabled: cfg.connectionProxyEnabled === true,
-    connectionProxyUrl: cfg.connectionProxyUrl || "",
-    connectionNoProxy: cfg.connectionNoProxy || "",
-    vercelRelayUrl: cfg.vercelRelayUrl || "",
-    strictProxy: false,
-  };
+  return toProxyFetchOptions(cfg, { strictProxy: false });
 }
 
 async function sendClaudePing(connection, providerConfig, proxyOptions, deps) {

@@ -1,3 +1,13 @@
+# Unreleased
+
+## Security
+- Edge relays (Cloudflare, Deno, Vercel): require a per-deploy `x-9r-relay-key`,
+  allow only public HTTPS targets, disable Cloudflare Workers observability,
+  refuse overwriting an existing worker/app, use random default names, take the
+  live URL from the deploy API (Deno org domain is validated), and stop echoing
+  upstream deploy error bodies. Existing relays without a stored secret must be
+  deleted and redeployed — 9router will no longer send provider keys through them.
+
 # v0.5.55 (2026-08-14)
 
 ## Features

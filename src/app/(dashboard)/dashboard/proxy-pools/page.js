@@ -39,8 +39,8 @@ export default function ProxyPoolsPage() {
   const [editingProxyPool, setEditingProxyPool] = useState(null);
   const [formData, setFormData] = useState(normalizeFormData());
   const [batchImportText, setBatchImportText] = useState("");
-  const [vercelForm, setVercelForm] = useState({ vercelToken: "", projectName: "vercel-relay" });
-  const [cloudflareForm, setCloudflareForm] = useState({ accountId: "", apiToken: "", projectName: "cloudflare-relay" });
+  const [vercelForm, setVercelForm] = useState({ vercelToken: "", projectName: "" });
+  const [cloudflareForm, setCloudflareForm] = useState({ accountId: "", apiToken: "", projectName: "" });
   const [denoForm, setDenoForm] = useState({ denoToken: "", orgDomain: "", projectName: "" });
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -343,7 +343,7 @@ export default function ProxyPoolsPage() {
   };
 
   const openVercelModal = () => {
-    setVercelForm({ vercelToken: "", projectName: "vercel-relay" });
+    setVercelForm({ vercelToken: "", projectName: "" });
     setShowVercelModal(true);
   };
 
@@ -353,7 +353,7 @@ export default function ProxyPoolsPage() {
   };
 
   const openCloudflareModal = () => {
-    setCloudflareForm({ accountId: "", apiToken: "", projectName: "cloudflare-relay" });
+    setCloudflareForm({ accountId: "", apiToken: "", projectName: "" });
     setShowCloudflareModal(true);
   };
 
@@ -722,6 +722,12 @@ export default function ProxyPoolsPage() {
                     {pool.type === "cloudflare" && (
                       <Badge variant="default" size="sm">cloudflare relay</Badge>
                     )}
+                    {pool.type === "deno" && (
+                      <Badge variant="default" size="sm">deno relay</Badge>
+                    )}
+                    {(pool.type === "vercel" || pool.type === "cloudflare" || pool.type === "deno") && !pool.hasRelaySecret && (
+                      <Badge variant="error" size="sm">redeploy required</Badge>
+                    )}
                     <Badge variant="default" size="sm">
                       {pool.boundConnectionCount || 0} bound
                     </Badge>
@@ -729,6 +735,11 @@ export default function ProxyPoolsPage() {
                   <p className="text-xs text-text-muted truncate mt-1">{pool.proxyUrl}</p>
                   {pool.noProxy ? (
                     <p className="text-xs text-text-muted truncate">No proxy: {pool.noProxy}</p>
+                  ) : null}
+                  {(pool.type === "vercel" || pool.type === "cloudflare" || pool.type === "deno") && !pool.hasRelaySecret ? (
+                    <p className="text-xs text-error mt-1">
+                      This relay was deployed without an auth secret. Delete it and deploy a new one.
+                    </p>
                   ) : null}
                   <p className="text-[11px] text-text-muted mt-1">
                     Last tested: {formatDateTime(pool.lastTestedAt)}
@@ -838,8 +849,8 @@ export default function ProxyPoolsPage() {
             label="Project Name"
             value={vercelForm.projectName}
             onChange={(e) => setVercelForm((prev) => ({ ...prev, projectName: e.target.value }))}
-            placeholder="my-relay"
-            hint="Unique name for your Vercel project. Leave empty for auto-generated name."
+            placeholder="leave empty for a random name"
+            hint="Unique name for your Vercel project. Leave empty for a random name."
           />
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <Button
@@ -902,8 +913,8 @@ export default function ProxyPoolsPage() {
             label="Worker Name"
             value={cloudflareForm.projectName}
             onChange={(e) => setCloudflareForm((prev) => ({ ...prev, projectName: e.target.value }))}
-            placeholder="my-relay"
-            hint="Unique name for your Cloudflare Worker. Leave empty for auto-generated name."
+            placeholder="leave empty for a random name"
+            hint="Unique name for your Cloudflare Worker. Leave empty for a random name."
           />
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <Button
@@ -966,8 +977,8 @@ export default function ProxyPoolsPage() {
             label="App Name"
             value={denoForm.projectName}
             onChange={(e) => setDenoForm((prev) => ({ ...prev, projectName: e.target.value }))}
-            placeholder="deno-relay"
-            hint="Unique app name. Leave empty for auto-generated name."
+            placeholder="leave empty for a random name"
+            hint="Unique app name. Leave empty for a random name."
           />
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <Button

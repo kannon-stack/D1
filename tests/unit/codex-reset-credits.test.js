@@ -21,6 +21,15 @@ vi.mock("@/lib/localDb", () => ({
 
 vi.mock("@/lib/network/connectionProxy", () => ({
   resolveConnectionProxyConfig: mocks.resolveConnectionProxyConfig,
+  toProxyFetchOptions: (resolved = {}, overrides = {}) => ({
+    connectionProxyEnabled: resolved.connectionProxyEnabled === true,
+    connectionProxyUrl: resolved.connectionProxyUrl || "",
+    connectionNoProxy: resolved.connectionNoProxy || "",
+    vercelRelayUrl: resolved.vercelRelayUrl || "",
+    relaySecret: resolved.relaySecret || "",
+    strictProxy: resolved.strictProxy === true,
+    ...overrides,
+  }),
 }));
 
 vi.mock("@/app/api/usage/[connectionId]/route.js", () => ({

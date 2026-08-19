@@ -1,4 +1,5 @@
 import { getProxyPoolById } from "@/models";
+import { RELAY_TYPES } from "@/lib/network/edgeRelay";
 
 // Safely normalize any value into a trimmed string.
 function normalizeString(value) {
@@ -98,7 +99,7 @@ export async function resolveConnectionProxyConfig(
          * Vercel/Cloudflare relay proxies use base URL rewriting
          * instead of HTTP_PROXY environment variables.
          */
-        if (proxyPool.type === "vercel" || proxyPool.type === "cloudflare" || proxyPool.type === "deno") {
+        if (RELAY_TYPES.has(proxyPool.type)) {
           return {
             source: proxyPool.type,
 
@@ -112,6 +113,7 @@ export async function resolveConnectionProxyConfig(
             strictProxy: proxyPool.strictProxy === true,
 
             vercelRelayUrl: proxyUrl, // Still mapped to vercelRelayUrl in the unified payload since they use the exact same header spec
+            relaySecret: normalizeString(proxyPool?.relaySecret),
           };
         }
 
@@ -184,4 +186,16 @@ export async function resolveConnectionProxyConfig(
       strictProxy: false,
     };
   }
+}
+
+export function toProxyFetchOptions(resolved = {}, overrides = {}) {
+  return {
+    connectionProxyEnabled: resolved.connectionProxyEnabled === true,
+    connectionProxyUrl: resolved.connectionProxyUrl || "",
+    connectionNoProxy: resolved.connectionNoProxy || "",
+    vercelRelayUrl: resolved.vercelRelayUrl || "",
+    relaySecret: resolved.relaySecret || "",
+    strictProxy: resolved.strictProxy === true,
+    ...overrides,
+  };
 }

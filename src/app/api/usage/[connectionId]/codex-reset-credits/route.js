@@ -3,7 +3,7 @@ import "open-sse/index.js";
 
 import { getProviderConnectionById } from "@/lib/localDb";
 import { consumeCodexRateLimitResetCredit, getCodexRateLimitResetCredits } from "open-sse/services/usage.js";
-import { resolveConnectionProxyConfig } from "@/lib/network/connectionProxy";
+import { resolveConnectionProxyConfig, toProxyFetchOptions } from "@/lib/network/connectionProxy";
 import { refreshAndUpdateCredentials } from "../route.js";
 
 const AUTH_EXPIRED_PATTERNS = ["expired", "authentication", "unauthorized", "401", "re-authorize"];
@@ -64,13 +64,7 @@ async function getCodexConnection(connectionId) {
   }
 
   const proxyConfig = await resolveConnectionProxyConfig(connection.providerSpecificData);
-  const proxyOptions = {
-    connectionProxyEnabled: proxyConfig.connectionProxyEnabled === true,
-    connectionProxyUrl: proxyConfig.connectionProxyUrl || "",
-    connectionNoProxy: proxyConfig.connectionNoProxy || "",
-    vercelRelayUrl: proxyConfig.vercelRelayUrl || "",
-    strictProxy: false,
-  };
+  const proxyOptions = toProxyFetchOptions(proxyConfig, { strictProxy: false });
 
   return { connection, isOAuth, proxyOptions };
 }

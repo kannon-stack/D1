@@ -1,19 +1,30 @@
 import { NextResponse } from "next/server";
 import { getProxyPoolById, updateProxyPool } from "@/models";
 import { testProxyUrl } from "@/lib/network/proxyTest";
+import { RELAY_TYPES, buildEdgeRelayHeaders } from "@/lib/network/edgeRelay";
 import { fetch as undiciFetch } from "undici";
 
-async function testVercelRelay(relayUrl, timeoutMs = 10000) {
+async function testEdgeRelay(proxyPool, timeoutMs = 10000) {
+  if (!proxyPool.relaySecret) {
+    return {
+      ok: false,
+      status: 401,
+      error: "Relay has no auth secret. Delete it and deploy a new relay from Proxy Pools.",
+    };
+  }
+
   const controller = new AbortController();
   const startedAt = Date.now();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await undiciFetch(relayUrl, {
+    const headers = buildEdgeRelayHeaders(
+      "https://httpbin.org/get",
+      {},
+      proxyPool.relaySecret
+    );
+    const res = await undiciFetch(proxyPool.proxyUrl, {
       method: "GET",
-      headers: {
-        "x-relay-target": "https://httpbin.org",
-        "x-relay-path": "/get",
-      },
+      headers,
       signal: controller.signal,
     });
     return {
@@ -33,7 +44,6 @@ async function testVercelRelay(relayUrl, timeoutMs = 10000) {
   }
 }
 
-// POST /api/proxy-pools/[id]/test - Test proxy pool entry
 export async function POST(request, { params }) {
   try {
     const { id } = await params;
@@ -43,8 +53,8 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: "Proxy pool not found" }, { status: 404 });
     }
 
-    const result = proxyPool.type === "vercel" || proxyPool.type === "cloudflare" || proxyPool.type === "deno"
-      ? await testVercelRelay(proxyPool.proxyUrl)
+    const result = RELAY_TYPES.has(proxyPool.type)
+      ? await testEdgeRelay(proxyPool)
       : await testProxyUrl({ proxyUrl: proxyPool.proxyUrl });
     const now = new Date().toISOString();
 
