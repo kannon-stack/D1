@@ -49,6 +49,7 @@ data/
 logs/*
 source/*
 .cursor/*
+!.cursor/environment.json
 docs/*
 !docs/ARCHITECTURE.md
 test/*
