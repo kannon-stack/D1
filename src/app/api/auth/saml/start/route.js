@@ -3,12 +3,17 @@ import { cookies } from "next/headers";
 import { getSettings } from "@/lib/localDb";
 import { buildSamlAuthorizeUrl, getSamlBaseUrl, isSamlConfigured } from "@/lib/auth/saml.js";
 import { shouldUseSecureCookie } from "@/lib/auth/dashboardSession";
+import { isSsoTypeEnabled } from "@/lib/auth/authMode";
+import { isTunnelDashboardBlocked } from "@/lib/auth/tunnelAccess";
 
 export async function GET(request) {
   const settings = await getSettings();
   const origin = getSamlBaseUrl(request, settings);
   try {
-    if (!isSamlConfigured(settings)) {
+    if (isTunnelDashboardBlocked(request, settings)) {
+      return NextResponse.redirect(new URL("/login?error=tunnel_dashboard_disabled", origin));
+    }
+    if (!isSsoTypeEnabled(settings, "saml") || !isSamlConfigured(settings)) {
       return NextResponse.redirect(new URL("/login?error=saml_not_configured", origin));
     }
 

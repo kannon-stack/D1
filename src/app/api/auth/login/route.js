@@ -7,16 +7,11 @@ import { isOidcConfigured } from "@/lib/auth/oidc";
 import { isSamlConfigured } from "@/lib/auth/saml.js";
 import { checkLock, recordFail, recordSuccess, getClientIp } from "@/lib/auth/loginLimiter";
 import { isLocalRequest } from "@/dashboardGuard";
+import { getSsoType, isSsoOnlyMode } from "@/lib/auth/authMode";
+import { isTunnelDashboardBlocked } from "@/lib/auth/tunnelAccess";
 
 const RESET_HINT = "Forgot password? Reset to default via 9Router CLI → Settings → Reset Password to Default.";
 const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
-
-function isTunnelRequest(request, settings) {
-  const host = (request.headers.get("host") || "").split(":")[0].toLowerCase();
-  const tunnelHost = settings.tunnelUrl ? new URL(settings.tunnelUrl).hostname.toLowerCase() : "";
-  const tailscaleHost = settings.tailscaleUrl ? new URL(settings.tailscaleUrl).hostname.toLowerCase() : "";
-  return (tunnelHost && host === tunnelHost) || (tailscaleHost && host === tailscaleHost);
-}
 
 export async function POST(request) {
   try {
@@ -33,15 +28,15 @@ export async function POST(request) {
     const settings = await getSettings();
 
     // Block login via tunnel/tailscale if dashboard access is disabled
-    if (isTunnelRequest(request, settings) && settings.tunnelDashboardAccess !== true) {
+    if (isTunnelDashboardBlocked(request, settings)) {
       return NextResponse.json({ error: "Dashboard access via tunnel is disabled" }, { status: 403 });
     }
 
     // Default password is '123456' if not set
     const storedHash = settings.password;
 
-    if (settings.authMode === "sso" || settings.authMode === "saml" || settings.authMode === "oidc") {
-      const ssoType = settings.ssoType || (settings.authMode === "saml" ? "saml" : "oidc");
+    if (isSsoOnlyMode(settings.authMode)) {
+      const ssoType = getSsoType(settings);
       if (ssoType === "saml" && isSamlConfigured(settings)) {
         return NextResponse.json({ error: "Password login is disabled. Use SAML SSO sign in." }, { status: 403 });
       }

@@ -7,6 +7,23 @@
   live URL from the deploy API (Deno org domain is validated), and stop echoing
   upstream deploy error bodies. Existing relays without a stored secret must be
   deleted and redeployed — 9router will no longer send provider keys through them.
+- **Auth**: OIDC sign-in now rejects an `id_token` whose `nonce` doesn't match the
+  login attempt (jose ignored the `nonce` option, so it was never checked). SAML
+  start/ACS honor the auth mode, so SAML login no longer works in "Password only".
+
+## Fixes
+- **Auth**: "OIDC only" mode (saved as `authMode: "sso"`) sent every OIDC click
+  (e.g. Google) back to the login page; password login was blocked too, so
+  nobody could sign in. All auth routes now share one auth-mode resolver.
+- **Auth**: the login page shows SSO errors from `?error=` instead of silently
+  re-rendering the sign-in button.
+- **Auth**: OIDC/SAML no longer issue a session on a tunnel/Tailscale host when
+  tunnel dashboard access is off, and the login page no longer redirect-loops
+  on its spinner when a session exists there.
+- **Auth**: OIDC discovery/token/JWKS requests time out after 10s instead of
+  hanging; Google's scheme-less `iss` (`accounts.google.com`) is accepted.
+- **Login page**: remove the unreachable "set new password" form, show the
+  default-password hint only when no password is set.
 
 # v0.5.55 (2026-08-14)
 

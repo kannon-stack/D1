@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { getSettings } from "@/lib/localDb";
+import { isSsoTypeEnabled } from "@/lib/auth/authMode";
 
 export const OIDC_COOKIE_NAMES = {
   state: "oidc_state",
@@ -9,7 +10,10 @@ export const OIDC_COOKIE_NAMES = {
 };
 
 const DEFAULT_SCOPES = "openid profile email";
-const DEFAULT_LOGIN_LABEL = "Sign in with OIDC";
+// Without a timeout an unreachable IdP leaves the browser on a blank loading tab.
+const OIDC_FETCH_TIMEOUT_MS = 10_000;
+// Google documents both forms as valid `iss` values for its ID tokens.
+const GOOGLE_ISSUERS = ["https://accounts.google.com", "accounts.google.com"];
 
 function trimTrailingSlashes(value) {
   return (value || "").trim().replace(/\/+$/, "");
@@ -50,7 +54,7 @@ export function isOidcConfigured(settings) {
 
 export async function getOidcRuntimeConfig() {
   const settings = await getSettings();
-  if (!["oidc", "both"].includes(settings.authMode) || !isOidcConfigured(settings)) return null;
+  if (!isSsoTypeEnabled(settings, "oidc") || !isOidcConfigured(settings)) return null;
 
   const issuerUrl = trimTrailingSlashes(settings.oidcIssuerUrl);
   return {
@@ -58,13 +62,12 @@ export async function getOidcRuntimeConfig() {
     clientId: settings.oidcClientId.trim(),
     clientSecret: settings.oidcClientSecret.trim(),
     scopes: normalizeScopes(settings.oidcScopes),
-    loginLabel: (settings.oidcLoginLabel || DEFAULT_LOGIN_LABEL).trim() || DEFAULT_LOGIN_LABEL,
   };
 }
 
 export async function fetchOidcDiscovery(issuerUrl) {
   const discoveryUrl = `${trimTrailingSlashes(issuerUrl)}/.well-known/openid-configuration`;
-  const res = await fetch(discoveryUrl, { cache: "no-store" });
+  const res = await fetch(discoveryUrl, { cache: "no-store", signal: AbortSignal.timeout(OIDC_FETCH_TIMEOUT_MS) });
   if (!res.ok) {
     throw new Error(`Failed to load OIDC discovery document from ${discoveryUrl}`);
   }
@@ -130,6 +133,7 @@ export async function exchangeOidcCode({
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
+    signal: AbortSignal.timeout(OIDC_FETCH_TIMEOUT_MS),
   });
 
   const data = await res.json().catch(() => ({}));
@@ -168,6 +172,7 @@ export async function probeOidcClientSecret({
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
+    signal: AbortSignal.timeout(OIDC_FETCH_TIMEOUT_MS),
   });
 
   const data = await res.json().catch(() => ({}));
@@ -216,12 +221,15 @@ export async function verifyOidcIdToken({
   jwksUri,
   nonce,
 }) {
-  const jwks = createRemoteJWKSet(new URL(jwksUri));
+  const jwks = createRemoteJWKSet(new URL(jwksUri), { timeoutDuration: OIDC_FETCH_TIMEOUT_MS });
   const { payload } = await jwtVerify(idToken, jwks, {
-    issuer,
+    issuer: GOOGLE_ISSUERS.includes(issuer) ? GOOGLE_ISSUERS : issuer,
     audience,
-    nonce,
   });
+  // jose does not check `nonce`; it must match the one sent with the authorization request.
+  if (!nonce || payload.nonce !== nonce) {
+    throw new Error("OIDC id_token nonce mismatch");
+  }
   return payload;
 }
 

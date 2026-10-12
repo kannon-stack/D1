@@ -10,6 +10,8 @@ import {
 } from "@/lib/auth/saml.js";
 import { setDashboardAuthCookie } from "@/lib/auth/dashboardSession";
 import { checkLock, recordFail, recordSuccess, getClientIp } from "@/lib/auth/loginLimiter";
+import { isSsoTypeEnabled } from "@/lib/auth/authMode";
+import { isTunnelDashboardBlocked } from "@/lib/auth/tunnelAccess";
 
 export async function POST(request) {
   const settings = await getSettings();
@@ -41,9 +43,13 @@ export async function POST(request) {
       return NextResponse.redirect(new URL("/login?error=saml_missing_response", origin));
     }
 
-    if (!isSamlConfigured(settings)) {
+    if (!isSsoTypeEnabled(settings, "saml") || !isSamlConfigured(settings)) {
       recordFail(ip);
       return NextResponse.redirect(new URL("/login?error=saml_not_configured", origin));
+    }
+
+    if (isTunnelDashboardBlocked(request, settings)) {
+      return NextResponse.redirect(new URL("/login?error=tunnel_dashboard_disabled", origin));
     }
 
     const profile = await validateSamlResponse(request, { SAMLResponse }, storedRequestId, settings);

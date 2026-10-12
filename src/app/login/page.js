@@ -2,22 +2,34 @@
 
 import { useState, useEffect } from "react";
 import { Card, Button, Input } from "@/shared/components";
+import { isSsoEnabled as isSsoAuthMode } from "@/lib/auth/authMode";
+
+// SSO/OIDC/SAML routes redirect back here with ?error=<code or message>.
+const LOGIN_ERROR_MESSAGES = {
+  oidc_not_configured: "OIDC sign-in is not enabled or its configuration is incomplete.",
+  oidc_invalid_state: "The sign-in attempt expired or was started from a different address. Please try again.",
+  oidc_missing_code: "The identity provider did not return an authorization code. Please try again.",
+  saml_not_configured: "SAML sign-in is not enabled or its configuration is incomplete.",
+  saml_missing_response: "The identity provider did not return a SAML response. Please try again.",
+  access_denied: "Sign-in was cancelled or denied by the identity provider.",
+  tunnel_dashboard_disabled: "Dashboard access via tunnel is disabled.",
+};
 
 export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [ssoError, setSsoError] = useState("");
   const [resetHint, setResetHint] = useState("");
   const [retryAfter, setRetryAfter] = useState(0);
   const [loading, setLoading] = useState(false);
   const [hasPassword, setHasPassword] = useState(null);
+  const [tunnelBlocked, setTunnelBlocked] = useState(false);
   const [authMode, setAuthMode] = useState("password");
   const [ssoType, setSsoType] = useState("oidc");
   const [oidcConfigured, setOidcConfigured] = useState(false);
   const [oidcLoginLabel, setOidcLoginLabel] = useState("Sign in with OIDC");
   const [samlConfigured, setSamlConfigured] = useState(false);
   const [samlLoginLabel, setSamlLoginLabel] = useState("Sign in with SAML SSO");
-  const [mustChange, setMustChange] = useState(false);
-  const [newPassword, setNewPassword] = useState("");
 
   // Countdown for rate-limit
   useEffect(() => {
@@ -27,19 +39,30 @@ export default function LoginPage() {
   }, [retryAfter]);
 
   useEffect(() => {
+    const urlError = new URLSearchParams(window.location.search).get("error");
+    // Drop the error from the URL so a refresh starts clean.
+    if (urlError) window.history.replaceState(null, "", window.location.pathname);
+
     async function checkAuth() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
-      const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
 
       try {
-        const res = await fetch(`${baseUrl}/api/auth/status`, {
+        const res = await fetch("/api/auth/status", {
+          cache: "no-store",
           signal: controller.signal,
         });
         clearTimeout(timeoutId);
 
         if (res.ok) {
           const data = await res.json();
+          // The dashboard guard sends tunnel-blocked requests back here, so
+          // redirecting to /dashboard would loop forever on the spinner.
+          if (data.tunnelBlocked === true) {
+            setTunnelBlocked(true);
+            setHasPassword(!!data.hasPassword);
+            return;
+          }
           if (data.authenticated === true || data.requireLogin === false) {
             window.location.assign("/dashboard");
             return;
@@ -58,6 +81,8 @@ export default function LoginPage() {
       } catch (err) {
         clearTimeout(timeoutId);
         setHasPassword(true);
+      } finally {
+        if (urlError) setSsoError(LOGIN_ERROR_MESSAGES[urlError] || `Sign-in failed: ${urlError}`);
       }
     }
     checkAuth();
@@ -77,41 +102,12 @@ export default function LoginPage() {
       });
 
       if (res.ok) {
-        const data = await res.json();
-        if (data.mustChangePassword) {
-          setMustChange(true);
-          return;
-        }
         window.location.assign("/dashboard");
       } else {
         const data = await res.json();
         setError(data.error || "Invalid password");
         if (data.resetHint) setResetHint(data.resetHint);
         if (data.retryAfter) setRetryAfter(Number(data.retryAfter));
-      }
-    } catch (err) {
-      setError("An error occurred. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Force a new password before entering the dashboard (default + remote).
-  const handleSetNewPassword = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-    try {
-      const res = await fetch("/api/settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword: password, newPassword }),
-      });
-      if (res.ok) {
-        window.location.assign("/dashboard");
-      } else {
-        const data = await res.json();
-        setError(data.error || "Failed to set password");
       }
     } catch (err) {
       setError("An error occurred. Please try again.");
@@ -128,14 +124,15 @@ export default function LoginPage() {
     window.location.href = "/api/auth/saml/start";
   };
 
-  const isSsoEnabled = ["sso", "oidc", "saml", "both"].includes(authMode);
-  const activeSsoType = ssoType || (authMode === "saml" ? "saml" : "oidc");
+  // The status route already resolves ssoType from authMode + ssoType.
+  const isSsoEnabled = isSsoAuthMode(authMode);
+  const ssoLabel = ssoType === "saml" ? "SAML SSO" : "OIDC";
 
-  const samlAvailable = isSsoEnabled && activeSsoType === "saml" && samlConfigured;
-  const oidcAvailable = isSsoEnabled && activeSsoType === "oidc" && oidcConfigured;
+  const samlAvailable = !tunnelBlocked && isSsoEnabled && ssoType === "saml" && samlConfigured;
+  const oidcAvailable = !tunnelBlocked && isSsoEnabled && ssoType === "oidc" && oidcConfigured;
   const ssoAvailable = samlAvailable || oidcAvailable;
 
-  const passwordAvailable = authMode === "password" || authMode === "both" || !ssoAvailable;
+  const passwordAvailable = !tunnelBlocked && (authMode === "password" || authMode === "both" || !ssoAvailable);
 
   // Show loading state while checking password
   if (hasPassword === null) {
@@ -157,7 +154,9 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-primary mb-2">9Router</h1>
           <p className="text-text-muted">
-            {samlAvailable
+            {tunnelBlocked
+              ? "Dashboard access via tunnel is disabled"
+              : samlAvailable
               ? "Sign in with SAML 2.0 Single Sign-On"
               : oidcAvailable
               ? "Sign in with your OIDC provider to access the dashboard"
@@ -166,29 +165,15 @@ export default function LoginPage() {
         </div>
 
         <Card>
-          {mustChange ? (
-            <form onSubmit={handleSetNewPassword} className="flex flex-col gap-4">
-              <p className="text-sm text-amber-600 dark:text-amber-400 text-center">
-                Set a new password before accessing the dashboard remotely.
-              </p>
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium">New password</label>
-                <Input
-                  type="password"
-                  placeholder="Enter new password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  required
-                  autoFocus
-                />
-                {error && <p className="text-xs text-red-500">{error}</p>}
-              </div>
-              <Button type="submit" variant="primary" className="w-full" loading={loading} disabled={!newPassword}>
-                Set password
-              </Button>
-            </form>
-          ) : (
           <div className="flex flex-col gap-4">
+            {ssoError && <p className="text-xs text-red-500 text-center">{ssoError}</p>}
+
+            {tunnelBlocked && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 text-center">
+                Open the dashboard on the host machine, or enable dashboard access via tunnel in settings.
+              </p>
+            )}
+
             {samlAvailable && (
               <Button type="button" variant="primary" className="w-full" onClick={handleSamlLogin}>
                 {samlLoginLabel}
@@ -203,17 +188,17 @@ export default function LoginPage() {
 
             {ssoAvailable && passwordAvailable && <div className="h-px bg-border/60" />}
 
-            {passwordAvailable ? (
+            {passwordAvailable && (
               <form onSubmit={handleLogin} className="flex flex-col gap-4">
                 {isSsoEnabled && !ssoAvailable && (
                   <p className="text-xs text-amber-600 dark:text-amber-400 text-center">
-                    {activeSsoType === "saml" ? "SAML SSO" : "OIDC"} login is enabled, but configuration is incomplete. Password login is still available for recovery.
+                    {ssoLabel} login is enabled, but configuration is incomplete. Password login is still available for recovery.
                   </p>
                 )}
 
                 {authMode === "both" && ssoAvailable && (
                   <p className="text-xs text-text-muted text-center">
-                    Password and {activeSsoType === "saml" ? "SAML SSO" : "OIDC"} login are both enabled.
+                    Password and {ssoLabel} login are both enabled.
                   </p>
                 )}
 
@@ -250,20 +235,19 @@ export default function LoginPage() {
                   {retryAfter > 0 ? `Wait ${retryAfter}s` : "Login"}
                 </Button>
 
-                <p className="text-xs text-center text-text-muted mt-2">
-                  Default password is <code className="bg-sidebar px-1 rounded">123456</code>
-                </p>
                 {hasPassword === false && (
-                  <p className="text-xs text-center text-amber-600 dark:text-amber-400">
-                    Security risk: no password set. You will be asked to set one when logging in remotely.
-                  </p>
+                  <>
+                    <p className="text-xs text-center text-text-muted mt-2">
+                      Default password is <code className="bg-sidebar px-1 rounded">123456</code>
+                    </p>
+                    <p className="text-xs text-center text-amber-600 dark:text-amber-400">
+                      Security risk: no password set. Remote logins with the default password are refused until you change it from the host machine.
+                    </p>
+                  </>
                 )}
               </form>
-            ) : (
-              error && <p className="text-xs text-red-500">{error}</p>
             )}
           </div>
-          )}
         </Card>
       </div>
     </div>

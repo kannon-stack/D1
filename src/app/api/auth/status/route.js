@@ -4,15 +4,17 @@ import { getSettings } from "@/lib/localDb";
 import { isOidcConfigured } from "@/lib/auth/oidc";
 import { isSamlConfigured } from "@/lib/auth/saml.js";
 import { getDashboardAuthSession } from "@/lib/auth/dashboardSession";
+import { getSsoType } from "@/lib/auth/authMode";
+import { isTunnelDashboardBlocked } from "@/lib/auth/tunnelAccess";
 
-export async function GET() {
+export async function GET(request) {
   try {
     const settings = await getSettings();
     const cookieStore = await cookies();
     const session = await getDashboardAuthSession(cookieStore.get("auth_token")?.value);
     const requireLogin = settings.requireLogin !== false;
     const authMode = settings.authMode || "password";
-    const ssoType = settings.ssoType || "oidc";
+    const ssoType = getSsoType(settings);
     const oidcName = String(session?.oidcName || "").trim();
     const oidcEmail = String(session?.oidcEmail || "").trim();
     const samlName = String(session?.samlName || "").trim();
@@ -39,6 +41,7 @@ export async function GET() {
       displayName,
       loginMethod,
       authenticated: !!session,
+      tunnelBlocked: isTunnelDashboardBlocked(request, settings),
       oidcName: oidcName || null,
       oidcEmail: oidcEmail || null,
       oidcLogin: !!session?.oidc,
@@ -59,6 +62,7 @@ export async function GET() {
       displayName: "Password user",
       loginMethod: "Password",
       authenticated: false,
+      tunnelBlocked: false,
       oidcName: null,
       oidcEmail: null,
       oidcLogin: false,

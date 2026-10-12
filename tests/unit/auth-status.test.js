@@ -58,6 +58,23 @@ describe("GET /api/auth/status", () => {
     expect(response.body.authenticated).toBe(false);
   });
 
+  it("resolves ssoType and reports a blocked tunnel host so the login page does not loop", async () => {
+    mocks.getSettings.mockResolvedValue({
+      requireLogin: true,
+      authMode: "saml",
+      tunnelUrl: "https://abc.trycloudflare.com",
+      tunnelDashboardAccess: false,
+    });
+    mocks.getDashboardAuthSession.mockResolvedValue({ authenticated: true });
+
+    const tunnel = await GET({ headers: new Headers({ host: "abc.trycloudflare.com" }) });
+    const local = await GET({ headers: new Headers({ host: "localhost:20128" }) });
+
+    expect(tunnel.body.ssoType).toBe("saml");
+    expect(tunnel.body.tunnelBlocked).toBe(true);
+    expect(local.body.tunnelBlocked).toBe(false);
+  });
+
   it("fails closed when status dependencies throw", async () => {
     mocks.getSettings.mockRejectedValue(new Error("database unavailable"));
 

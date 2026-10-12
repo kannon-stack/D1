@@ -1,5 +1,4 @@
 import { SAML } from "@node-saml/node-saml";
-import { getSettings } from "../db/repos/settingsRepo.js";
 
 /**
  * Formats a raw Base64 string or unformatted X.509 certificate into standard PEM format.
@@ -26,18 +25,6 @@ export function formatX509Certificate(certStr) {
  */
 export function isSamlConfigured(settings) {
   return Boolean(settings?.samlEntryPoint && settings?.samlCert);
-}
-
-/**
- * Fetches settings and returns runtime status + settings.
- * @returns {Promise<{ configured: boolean, settings: object }>}
- */
-export async function getSamlRuntimeConfig() {
-  const settings = await getSettings();
-  return {
-    configured: isSamlConfigured(settings),
-    settings,
-  };
 }
 
 /**

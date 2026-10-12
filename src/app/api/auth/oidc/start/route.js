@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { getSettings } from "@/lib/localDb";
 import {
+  OIDC_COOKIE_NAMES,
   buildOidcAuthorizationUrl,
   createOidcNonce,
   createOidcState,
@@ -10,9 +12,14 @@ import {
   getPublicOrigin,
 } from "@/lib/auth/oidc";
 import { shouldUseSecureCookie } from "@/lib/auth/dashboardSession";
+import { isTunnelDashboardBlocked } from "@/lib/auth/tunnelAccess";
 
 export async function GET(request) {
   try {
+    if (isTunnelDashboardBlocked(request, await getSettings())) {
+      return NextResponse.redirect(new URL("/login?error=tunnel_dashboard_disabled", getPublicOrigin(request)));
+    }
+
     const config = await getOidcRuntimeConfig();
     if (!config) {
       return NextResponse.redirect(new URL("/login?error=oidc_not_configured", getPublicOrigin(request)));
@@ -41,9 +48,9 @@ export async function GET(request) {
       path: "/",
       maxAge: 10 * 60,
     };
-    cookieStore.set("oidc_state", state, baseOptions);
-    cookieStore.set("oidc_nonce", nonce, baseOptions);
-    cookieStore.set("oidc_code_verifier", verifier, baseOptions);
+    cookieStore.set(OIDC_COOKIE_NAMES.state, state, baseOptions);
+    cookieStore.set(OIDC_COOKIE_NAMES.nonce, nonce, baseOptions);
+    cookieStore.set(OIDC_COOKIE_NAMES.verifier, verifier, baseOptions);
 
     return NextResponse.redirect(authUrl);
   } catch (error) {
