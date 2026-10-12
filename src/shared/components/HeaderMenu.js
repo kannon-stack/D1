@@ -5,6 +5,7 @@ import PropTypes from "prop-types";
 import { useTheme } from "@/shared/hooks/useTheme";
 import ChangelogModal from "./ChangelogModal";
 import { ConfirmModal } from "./Modal";
+import { useNotificationStore } from "@/store/notificationStore";
 
 function MenuItem({ icon, label, onClick, trailing, danger }) {
   return (
@@ -44,7 +45,15 @@ export default function HeaderMenu({ onLogout }) {
   const handleShutdown = async () => {
     setIsShuttingDown(true);
     try {
-      await fetch("/api/version/shutdown", { method: "POST" });
+      const res = await fetch("/api/version/shutdown", { method: "POST" });
+      // fetch doesn't reject on 401/500: the server is still running.
+      if (!res.ok) {
+        useNotificationStore.getState().error(
+          res.status === 401 || res.status === 403
+            ? "Shutdown needs a signed-in session. If login is disabled, stop the server from the CLI/tray instead."
+            : `Shutdown failed (HTTP ${res.status}).`
+        );
+      }
     } catch (e) {
       // Expected to fail as server shuts down; ignore error
     }

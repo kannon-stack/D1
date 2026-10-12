@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getSettings } from "@/lib/localDb";
 import { formatX509Certificate } from "@/lib/auth/saml.js";
+import { getPublicOrigin } from "@/lib/auth/publicOrigin";
 import { verifyDashboardAuthToken } from "@/lib/auth/dashboardSession";
 
 async function canAccessTestRoute() {
@@ -53,7 +54,7 @@ export async function POST(request) {
       return NextResponse.json({ error: "Invalid IdP X.509 Certificate format" }, { status: 400 });
     }
 
-    const origin = new URL(request.url).origin;
+    const origin = getPublicOrigin(request);
     const acsUrl = `${origin}/api/auth/saml/acs`;
     const metadataUrl = `${origin}/api/auth/saml/metadata`;
 

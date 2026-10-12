@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useSyncExternalStore } from "react";
 import PropTypes from "prop-types";
 import { Modal, Button, Input } from "@/shared/components";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
@@ -30,6 +30,21 @@ const PASTE_TOKEN_PROVIDERS = {
   },
 };
 
+// Hostnames that all reach this same 9router server over loopback.
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+// Google installed-app clients accept any loopback host for redirect_uri, so the
+// popup can return to the dashboard's own origin (127.0.0.1 / [::1] included).
+// Other providers keep the registered http://localhost:<port>/callback form.
+const LOOPBACK_REDIRECT_PROVIDERS = new Set(["gemini-cli", "antigravity"]);
+
+// Providers whose callback carries no state we can match against authData.state:
+// cline/clinepass never send one, and iflow's round-trip of it is unverified
+// (its own CLI flow never checks it).
+const STATELESS_CALLBACK_PROVIDERS = new Set(["cline", "clinepass", "iflow"]);
+
+const subscribeNoop = () => () => {};
+
 /**
  * OAuth Modal Component
  * - Localhost: Auto callback via popup message
@@ -50,22 +65,36 @@ export default function OAuthModal({ isOpen, provider, providerInfo, onSuccess, 
   const popupRef = useRef(null);
   const pollingAbortRef = useRef(false);
   const openedRef = useRef(false);
+  const callbackProcessedRef = useRef(false);
   const { copied, copy } = useCopyToClipboard();
 
-  // State for client-only values to avoid hydration mismatch
-  const [isLocalhost, setIsLocalhost] = useState(false);
-  const [placeholderUrl, setPlaceholderUrl] = useState("/callback?code=...");
-  const callbackProcessedRef = useRef(false);
-
-  // Detect if running on localhost (client-side only)
+  // Keep the latest onSuccess without making callbacks depend on it: parents
+  // pass a new function every render, which used to re-arm the listeners.
+  const onSuccessRef = useRef(onSuccess);
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setIsLocalhost(
-        window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-      );
-      setPlaceholderUrl(`${window.location.origin}/callback?code=...`);
-    }
-  }, []);
+    onSuccessRef.current = onSuccess;
+  });
+
+  // Client-only origin (empty on the server to avoid hydration mismatch)
+  const pageOrigin = useSyncExternalStore(subscribeNoop, () => window.location.origin, () => "");
+  const placeholderUrl = `${pageOrigin}/callback?code=...`;
+
+  // Reset per-attempt state whenever the modal opens or closes. Clearing
+  // authData on close detaches the callback listeners below.
+  const [wasOpen, setWasOpen] = useState(isOpen);
+  if (isOpen !== wasOpen) {
+    setWasOpen(isOpen);
+    setStep("waiting");
+    setAuthData(null);
+    setCallbackUrl("");
+    setError(null);
+    setIsDeviceCode(false);
+    setDeviceData(null);
+    setPolling(false);
+    setAuthMode("browser");
+    setPasteToken("");
+    setIdeStatus(null);
+  }
 
   // Define all useCallback hooks BEFORE the useEffects that reference them
 
@@ -89,12 +118,12 @@ export default function OAuthModal({ isOpen, provider, providerInfo, onSuccess, 
       if (!res.ok) throw new Error(data.error);
 
       setStep("success");
-      onSuccess?.();
+      onSuccessRef.current?.();
     } catch (err) {
       setError(err.message);
       setStep("error");
     }
-  }, [authData, provider, onSuccess, oauthMeta]);
+  }, [authData, provider, oauthMeta]);
 
   const completeXaiManualCode = useCallback(async (code) => {
     if (!authData?.state) return;
@@ -108,12 +137,12 @@ export default function OAuthModal({ isOpen, provider, providerInfo, onSuccess, 
       if (!res.ok) throw new Error(data.error);
 
       setStep("success");
-      onSuccess?.();
+      onSuccessRef.current?.();
     } catch (err) {
       setError(err.message);
       setStep("error");
     }
-  }, [authData, onSuccess]);
+  }, [authData]);
 
   // Poll for device code token
   const startPolling = useCallback(async (deviceCode, codeVerifier, interval, extraData, deadlineMs) => {
@@ -155,7 +184,7 @@ export default function OAuthModal({ isOpen, provider, providerInfo, onSuccess, 
           pollingAbortRef.current = true; // Stop polling immediately
           setStep("success");
           setPolling(false);
-          onSuccess?.();
+          onSuccessRef.current?.();
           return;
         }
 
@@ -177,7 +206,7 @@ export default function OAuthModal({ isOpen, provider, providerInfo, onSuccess, 
     setError("Authorization timeout");
     setStep("error");
     setPolling(false);
-  }, [provider, onSuccess]);
+  }, [provider]);
 
   // Trae/Windsurf proxy OAuth flow: dynamic-port local callback → auto exchange.
   const startProxyFlow = useCallback(async (providerId) => {
@@ -213,6 +242,7 @@ export default function OAuthModal({ isOpen, provider, providerInfo, onSuccess, 
   // Start OAuth flow
   const startOAuthFlow = useCallback(async () => {
     if (!provider) return;
+    callbackProcessedRef.current = false; // new attempt (also covers "Try Again")
     try {
       setError(null);
 
@@ -293,11 +323,14 @@ export default function OAuthModal({ isOpen, provider, providerInfo, onSuccess, 
 
       // Authorization code flow - build redirect URI (some providers require fixed ports)
       const appPort = window.location.port || (window.location.protocol === "https:" ? "443" : "80");
+      const isLoopbackPage = LOOPBACK_HOSTS.has(window.location.hostname);
       let redirectUri;
       if (provider === "codex") {
         redirectUri = "http://localhost:1455/auth/callback";
       } else if (provider === "xai") {
         redirectUri = "http://127.0.0.1:56121/callback";
+      } else if (LOOPBACK_REDIRECT_PROVIDERS.has(provider) && isLoopbackPage) {
+        redirectUri = `http://${window.location.hostname}:${appPort}/callback`;
       } else {
         redirectUri = `http://localhost:${appPort}/callback`;
       }
@@ -380,7 +413,7 @@ export default function OAuthModal({ isOpen, provider, providerInfo, onSuccess, 
         if (!popupRef.current) {
           setStep("input");
         }
-      } else if (!isLocalhost || provider === "codex" || provider === "xai") {
+      } else if (!isLoopbackPage || provider === "codex" || provider === "xai") {
         // Non-localhost or proxy failed: manual input mode
         setStep("input");
         window.open(data.authUrl, "_blank");
@@ -396,7 +429,7 @@ export default function OAuthModal({ isOpen, provider, providerInfo, onSuccess, 
       setError(err.message);
       setStep("error");
     }
-  }, [provider, isLocalhost, startPolling, oauthMeta, idcConfig, authMode, startProxyFlow]);
+  }, [provider, startPolling, oauthMeta, idcConfig, authMode, startProxyFlow]);
 
   // Reset state and start OAuth when modal opens
   useEffect(() => {
@@ -404,15 +437,7 @@ export default function OAuthModal({ isOpen, provider, providerInfo, onSuccess, 
       // Guard against StrictMode/effect re-runs auto-opening multiple tabs.
       if (openedRef.current) return;
       openedRef.current = true;
-      setAuthData(null);
-      setCallbackUrl("");
-      setError(null);
-      setIsDeviceCode(false);
-      setDeviceData(null);
-      setPolling(false);
-      setAuthMode("browser");
-      setPasteToken("");
-      setIdeStatus(null);
+      callbackProcessedRef.current = false;
       pollingAbortRef.current = false;
       // Best-effort IDE detection for paste-token providers (Trae/Windsurf)
       if (PASTE_TOKEN_PROVIDERS[provider]) {
@@ -423,9 +448,11 @@ export default function OAuthModal({ isOpen, provider, providerInfo, onSuccess, 
       }
       startOAuthFlow();
     } else if (!isOpen) {
-      // Abort polling and cleanup proxy when modal closes
+      // Abort polling, close the popup and cleanup proxy when modal closes
       pollingAbortRef.current = true;
       openedRef.current = false;
+      try { popupRef.current?.close(); } catch { /* cross-origin or already closed */ }
+      popupRef.current = null;
       if (provider === "codex") {
         fetch("/api/oauth/codex/stop-proxy").catch(() => {});
       } else if (provider === "xai") {
@@ -439,6 +466,12 @@ export default function OAuthModal({ isOpen, provider, providerInfo, onSuccess, 
       }
     }
   }, [isOpen, provider, startOAuthFlow]);
+
+  // Unmounted while open (e.g. Kiro wrapper going Back): same cleanup as close
+  useEffect(() => () => {
+    pollingAbortRef.current = true;
+    try { popupRef.current?.close(); } catch { /* cross-origin or already closed */ }
+  }, []);
 
   // Server-side proxy mode (codex/xai fixed-port + trae/windsurf dynamic-port):
   // poll status until the proxy auto-exchanges and saves the connection.
@@ -467,7 +500,7 @@ export default function OAuthModal({ isOpen, provider, providerInfo, onSuccess, 
         if (data.status === "done") {
           callbackProcessedRef.current = true;
           setStep("success");
-          onSuccess?.();
+          onSuccessRef.current?.();
           return;
         }
         if (data.status === "error") {
@@ -489,61 +522,81 @@ export default function OAuthModal({ isOpen, provider, providerInfo, onSuccess, 
     };
     setTimeout(tick, POLL_INTERVAL_MS);
     return () => { cancelled = true; };
-  }, [authData, onSuccess]);
+  }, [authData]);
 
   // Listen for OAuth callback via multiple methods
   useEffect(() => {
     if (!authData) return;
-    callbackProcessedRef.current = false; // Reset when authData changes
 
-    // Handler for callback data - only process once
-    const handleCallback = async (data) => {
-      if (callbackProcessedRef.current) return; // Already processed
-
+    // Handler for callback data - only process once. Returns true when the
+    // callback belongs to this attempt (so the /callback page can be acked).
+    const handleCallback = (data) => {
+      if (!data) return false;
       const { code, token, state, error: callbackError, errorDescription } = data;
+
+      // Stale or foreign callback (old localStorage entry, another tab, the
+      // CLI, an injected code): ignore it without marking this attempt done.
+      if (!STATELESS_CALLBACK_PROVIDERS.has(provider) && authData.state && state !== authData.state) {
+        return false;
+      }
+      if (callbackProcessedRef.current) return true; // Duplicate delivery
 
       if (callbackError) {
         callbackProcessedRef.current = true;
         setError(errorDescription || callbackError);
         setStep("error");
-        return;
+        return true;
       }
 
       if (token || code) {
         callbackProcessedRef.current = true;
-        await exchangeTokens(token || code, state);
+        exchangeTokens(token || code, state);
+        return true;
       }
+      return false;
     };
+
+    const ack = (data) => ({ type: "oauth_callback_ack", state: data?.state ?? null });
 
     // Method 1: postMessage from popup
     const handleMessage = (event) => {
-      // Allow messages from same origin or localhost (any port)
-      const isLocalhost = event.origin.includes("localhost") || event.origin.includes("127.0.0.1");
-      const isSameOrigin = event.origin === window.location.origin;
-      if (!isLocalhost && !isSameOrigin) return;
-      
-      if (event.data?.type === "oauth_callback") {
-        handleCallback(event.data.data);
+      // Allow messages from same origin or a loopback alias (any port)
+      let isLoopback = false;
+      try {
+        isLoopback = LOOPBACK_HOSTS.has(new URL(event.origin).hostname);
+      } catch { /* opaque "null" origin */ }
+      if (!isLoopback && event.origin !== window.location.origin) return;
+
+      if (event.data?.type === "oauth_callback" && handleCallback(event.data.data)) {
+        try { event.source?.postMessage(ack(event.data.data), event.origin); } catch { /* popup gone */ }
       }
     };
     window.addEventListener("message", handleMessage);
 
     // Method 2: BroadcastChannel
     let channel;
+    const ackOnChannel = (data) => {
+      try { channel?.postMessage(ack(data)); } catch { /* channel closed */ }
+    };
     try {
       channel = new BroadcastChannel("oauth_callback");
-      channel.onmessage = (event) => handleCallback(event.data);
+      channel.onmessage = (event) => {
+        if (event.data?.type === "oauth_callback_ack") return; // another tab's ack
+        if (handleCallback(event.data)) ackOnChannel(event.data);
+      };
     } catch (e) {
       console.log("BroadcastChannel not supported");
     }
 
-    // Method 3: localStorage event
+    // Method 3: localStorage event (written by /callback only when nothing acked)
     const handleStorage = (event) => {
       if (event.key === "oauth_callback" && event.newValue) {
         try {
           const data = JSON.parse(event.newValue);
-          handleCallback(data);
-          localStorage.removeItem("oauth_callback");
+          if (handleCallback(data)) {
+            localStorage.removeItem("oauth_callback");
+            ackOnChannel(data);
+          }
         } catch (e) {
           console.log("Failed to parse localStorage data");
         }
@@ -556,10 +609,12 @@ export default function OAuthModal({ isOpen, provider, providerInfo, onSuccess, 
       const stored = localStorage.getItem("oauth_callback");
       if (stored) {
         const data = JSON.parse(stored);
-        if (data.timestamp && Date.now() - data.timestamp < 30000) {
-          handleCallback(data);
+        if (!data.timestamp || Date.now() - data.timestamp >= 30000) {
+          localStorage.removeItem("oauth_callback");
+        } else if (handleCallback(data)) {
+          localStorage.removeItem("oauth_callback");
+          ackOnChannel(data);
         }
-        localStorage.removeItem("oauth_callback");
       }
     } catch {
       // localStorage may be unavailable or data may be malformed - ignore silently
@@ -570,7 +625,7 @@ export default function OAuthModal({ isOpen, provider, providerInfo, onSuccess, 
       window.removeEventListener("storage", handleStorage);
       if (channel) channel.close();
     };
-  }, [authData, exchangeTokens]);
+  }, [authData, exchangeTokens, provider]);
 
   // Handle manual URL input
   const handleManualSubmit = async () => {
@@ -589,7 +644,7 @@ export default function OAuthModal({ isOpen, provider, providerInfo, onSuccess, 
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
         setStep("success");
-        onSuccess?.();
+        onSuccessRef.current?.();
         return;
       }
 
@@ -605,7 +660,7 @@ export default function OAuthModal({ isOpen, provider, providerInfo, onSuccess, 
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
         setStep("success");
-        onSuccess?.();
+        onSuccessRef.current?.();
         return;
       }
 

@@ -1223,7 +1223,7 @@ Hành vi dự kiến từ việc xác thực gần đây:
 
 ### API Quản lý và Bảng điều khiển
 
-- Xác thực/cài đặt: `/api/auth/login`, `/api/auth/logout`, `/api/settings`, `/api/settings/require-login`
+- Xác thực/cài đặt: `/api/auth/login`, `/api/auth/logout`, `/api/settings`
 - Quản lý nhà cung cấp: `/api/providers`, `/api/providers/[id]`, `/api/providers/[id]/test`, `/api/providers/[id]/models`, `/api/providers/validate`, `/api/provider-n*`
 - Luồng OAuth: `/api/oauth/[provider]/[action]` (+ các import cụ thể theo nhà cung cấp như Cursor/Kiro)
 - Cấu hình định tuyến: `/api/models/alias`, `/api/combos*`, `/api/keys*`, `/api/pricing`
@@ -1235,7 +1235,7 @@ Hành vi dự kiến từ việc xác thực gần đây:
 
 - Các route Bảng điều khiển (`/dashboard/*`) sử dụng bảo vệ cookie `auth_token`.
 - Đăng nhập sử dụng hash mật khẩu đã lưu khi có mặt; nếu không, nó dự phòng vào `INITIAL_PASSWORD`.
-- `requireLogin` có thể được chuyển đổi qua `/api/settings/require-login`.
+- `requireLogin` có thể được chuyển đổi qua `PATCH /api/settings`.
 
 ### Xử lý Yêu cầu (C cao)
 

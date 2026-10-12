@@ -1,32 +1,28 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { getSettings } from "@/lib/localDb";
-import { buildSamlAuthorizeUrl, getSamlBaseUrl, isSamlConfigured } from "@/lib/auth/saml.js";
-import { shouldUseSecureCookie } from "@/lib/auth/dashboardSession";
+import { buildSamlAuthorizeUrl, isSamlConfigured } from "@/lib/auth/saml.js";
+import { getPublicOrigin } from "@/lib/auth/publicOrigin";
+import { isSsoTypeEnabled } from "@/lib/auth/authMode";
+import { isTunnelDashboardBlocked } from "@/lib/auth/tunnelAccess";
 
 export async function GET(request) {
   const settings = await getSettings();
-  const origin = getSamlBaseUrl(request, settings);
+  const origin = getPublicOrigin(request);
   try {
-    if (!isSamlConfigured(settings)) {
+    if (isTunnelDashboardBlocked(request, settings)) {
+      return NextResponse.redirect(new URL("/login?error=tunnel_dashboard_disabled", origin));
+    }
+    if (!isSsoTypeEnabled(settings, "saml") || !isSamlConfigured(settings)) {
       return NextResponse.redirect(new URL("/login?error=saml_not_configured", origin));
     }
 
-    const { authorizeUrl, requestId } = await buildSamlAuthorizeUrl(request, settings);
-
-    const cookieStore = await cookies();
-    cookieStore.set("saml_state", requestId, {
-      httpOnly: true,
-      secure: shouldUseSecureCookie(request),
-      sameSite: "lax",
-      path: "/",
-      maxAge: 10 * 60,
-    });
+    // The AuthnRequest ID is kept server-side (see saml.js): the IdP's cross-site POST
+    // back to the ACS would not carry a SameSite=Lax state cookie.
+    const { authorizeUrl } = await buildSamlAuthorizeUrl(request, settings);
 
     return NextResponse.redirect(authorizeUrl);
   } catch (error) {
-    return NextResponse.redirect(
-      new URL(`/login?error=${encodeURIComponent(error.message || "saml_start_failed")}`, origin)
-    );
+    console.error("[auth/saml/start] Could not start sign-in:", error);
+    return NextResponse.redirect(new URL("/login?error=saml_start_failed", origin));
   }
 }

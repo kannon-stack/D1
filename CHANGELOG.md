@@ -7,6 +7,63 @@
   live URL from the deploy API (Deno org domain is validated), and stop echoing
   upstream deploy error bodies. Existing relays without a stored secret must be
   deleted and redeployed — 9router will no longer send provider keys through them.
+- **Auth**: OIDC sign-in now rejects an `id_token` whose `nonce` doesn't match the
+  login attempt (jose ignored the `nonce` option, so it was never checked). SAML
+  start/ACS honor the auth mode, so SAML login no longer works in "Password only".
+- **Auth**: OIDC gets an **Allowed emails** list (`oidcAllowedEmails`: exact
+  addresses or `@domain` entries). Google sign-in, which any Google account can
+  complete, is refused until the list is set; other issuers enforce it when set.
+  Until a Google install sets it, password login stays available so upgrades
+  don't lock the admin out.
+- **Auth**: the published `.env.example`/README `JWT_SECRET` values are ignored in
+  favor of the generated `DATA_DIR/jwt-secret` (anyone could forge a session with
+  them), and example `INITIAL_PASSWORD` values no longer bypass the remote
+  default-password guard. `.env.example` no longer sets either.
+- **Auth**: SAML replay protection actually runs. The `saml_state` cookie never
+  reached the ACS (SameSite=Lax on a cross-site POST), so request IDs are now
+  kept server-side in a bounded cache and each `InResponseTo` is single-use.
+- **Auth**: `/login?error=` only shows known messages or code-shaped values, not
+  attacker-supplied text; servers log the details instead.
+- **Provider OAuth popup**: the callback `state` is checked, closed modals stop
+  listening, and loopback `postMessage` origins are matched exactly.
+- With "Require login" off, cross-site POST/PUT/PATCH/DELETE to `/api/*` is
+  rejected (`Sec-Fetch-Site: cross-site`).
+- Remove `/api/settings/require-login`: unused, unauthenticated, and it exposed
+  the tunnel/Tailscale URLs.
+
+## Fixes
+- **Auth**: Google/OIDC and SAML URLs (redirect_uri, post-login and error
+  redirects, SAML ACS/metadata) now use the address the browser is on instead
+  of `BASE_URL`/`NEXT_PUBLIC_BASE_URL`, which the docs set to the internal
+  `http://localhost:20128`. Off that exact address Google sent users to a dead
+  URL. Set `AUTH_PUBLIC_URL` to override.
+- **Auth**: SAML ACS redirects with 303 so the browser does not re-POST the
+  assertion; a stale OIDC callback no longer wipes a newer attempt's cookies;
+  `auth_token` expires with its 24h JWT.
+- **Dashboard**: an expired session (or a restored tab) returns to `/login`
+  instead of rendering empty pages; Back after logout no longer shows the cached
+  dashboard; logout clears leftover OAuth popup data; the login page offers Retry
+  when sign-in options fail to load; Update/Shutdown report a refused shutdown
+  instead of "Server stopped".
+- **Provider OAuth popup** (Gemini CLI, Antigravity, …): works when the dashboard
+  is opened on 127.0.0.1; reports provider errors as errors; closes only after
+  the dashboard confirms it got the code, otherwise shows the URL to paste.
+- **Kiro**: CLIProxyAPI import closes the dialog and refreshes the list; the
+  dialog resets when reopened; auto-detected IDC credentials are only sent with
+  the auto-detected token.
+- Remove the unregistered `public/sw.js` and translations for removed login text.
+- **Auth**: "OIDC only" mode (saved as `authMode: "sso"`) sent every OIDC click
+  (e.g. Google) back to the login page; password login was blocked too, so
+  nobody could sign in. All auth routes now share one auth-mode resolver.
+- **Auth**: the login page shows SSO errors from `?error=` instead of silently
+  re-rendering the sign-in button.
+- **Auth**: OIDC/SAML no longer issue a session on a tunnel/Tailscale host when
+  tunnel dashboard access is off, and the login page no longer redirect-loops
+  on its spinner when a session exists there.
+- **Auth**: OIDC discovery/token/JWKS requests time out after 10s instead of
+  hanging; Google's scheme-less `iss` (`accounts.google.com`) is accepted.
+- **Login page**: remove the unreachable "set new password" form, show the
+  default-password hint only when no password is set.
 
 # v0.5.55 (2026-08-14)
 

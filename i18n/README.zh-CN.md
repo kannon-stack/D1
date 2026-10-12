@@ -1222,7 +1222,7 @@ OPENAI_API_KEY="your-cloud-key" bash tester/security/test-cloud-openai-compatibl
 
 ### 仪表板和管理 API
 
-- 认证/设置：`/api/auth/login`, `/api/auth/logout`, `/api/settings`, `/api/settings/require-login`
+- 认证/设置：`/api/auth/login`, `/api/auth/logout`, `/api/settings`
 - 提供商管理：`/api/providers`, `/api/providers/[id]`, `/api/providers/[id]/test`, `/api/providers/[id]/models`, `/api/providers/validate`, `/api/provider-nodes*`
 - OAuth 流程：`/api/oauth/[provider]/[action]`（+ 特定提供商导入如 Cursor/Kiro）
  路由配置：`/api/models/alias`, `/api/combos*`, `/api/keys*`, `/api/pricing`
@@ -1234,7 +1234,7 @@ OPENAI_API_KEY="your-cloud-key" bash tester/security/test-cloud-openai-compatibl
 
 - 仪表板路由（`/dashboard/*`）使用 `auth_token` cookie 保护。
 - 登录时如果存在保存的密码哈希则使用；否则回退到 `INITIAL_PASSWORD`。
-- `requireLogin` 可以通过 `/api/settings/require-login` 切换。
+- `requireLogin` 可以通过 `PATCH /api/settings` 切换。
 
 ### 请求处理（高级）
 

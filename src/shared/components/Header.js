@@ -219,7 +219,12 @@ export default function Header({ onMenuClick, showMenuButton = true }) {
     try {
       const res = await fetch("/api/auth/logout", { method: "POST" });
       if (res.ok) {
-        window.location.assign("/login");
+        try {
+          // Provider OAuth popup result (code/state) written by /callback.
+          localStorage.removeItem("oauth_callback");
+        } catch {}
+        // replace() so Back doesn't return to the signed-out dashboard.
+        window.location.replace("/login");
       }
     } catch (err) {
       console.error("Failed to logout:", err);

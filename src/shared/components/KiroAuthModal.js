@@ -19,8 +19,11 @@ export default function KiroAuthModal({ isOpen, onMethodSelect, onClose }) {
   const [error, setError] = useState(null);
   const [importing, setImporting] = useState(false);
   const [autoDetecting, setAutoDetecting] = useState(false);
-  const [autoDetected, setAutoDetected] = useState(false);
+  const [autoDetectedToken, setAutoDetectedToken] = useState(null);
   const [idcCredentials, setIdcCredentials] = useState(null);
+  // IDC credentials belong to the auto-detected token only; once the user
+  // edits the field they are dropped (along with the "auto-detected" banner).
+  const usingAutoDetected = !!autoDetectedToken && refreshToken.trim() === autoDetectedToken.trim();
 
   // Auto-detect token when import method is selected
   useEffect(() => {
@@ -29,7 +32,7 @@ export default function KiroAuthModal({ isOpen, onMethodSelect, onClose }) {
     const autoDetect = async () => {
       setAutoDetecting(true);
       setError(null);
-      setAutoDetected(false);
+      setAutoDetectedToken(null);
       setIdcCredentials(null);
 
       try {
@@ -38,7 +41,7 @@ export default function KiroAuthModal({ isOpen, onMethodSelect, onClose }) {
 
         if (data.found) {
           setRefreshToken(data.refreshToken);
-          setAutoDetected(true);
+          setAutoDetectedToken(data.refreshToken);
           // Store IDC/organization credentials if present
           if (data.clientId && data.clientSecret) {
             setIdcCredentials({
@@ -87,7 +90,7 @@ export default function KiroAuthModal({ isOpen, onMethodSelect, onClose }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           refreshToken: refreshToken.trim(),
-          ...(idcCredentials || {}),
+          ...(usingAutoDetected && idcCredentials ? idcCredentials : {}),
         }),
       });
 
@@ -489,7 +492,7 @@ export default function KiroAuthModal({ isOpen, onMethodSelect, onClose }) {
             {!autoDetecting && (
               <>
                 {/* Success message if auto-detected */}
-                {autoDetected && (
+                {usingAutoDetected && (
                   <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg border border-green-200 dark:border-green-800">
                     <div className="flex gap-2">
                       <span className="material-symbols-outlined text-green-600 dark:text-green-400">check_circle</span>
@@ -501,7 +504,7 @@ export default function KiroAuthModal({ isOpen, onMethodSelect, onClose }) {
                 )}
 
                 {/* Info message if not auto-detected */}
-                {!autoDetected && !error && (
+                {!autoDetectedToken && !error && (
                   <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
                     <div className="flex gap-2">
                       <span className="material-symbols-outlined text-blue-600 dark:text-blue-400">info</span>

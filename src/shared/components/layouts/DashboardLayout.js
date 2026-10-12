@@ -1,10 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useNotificationStore } from "@/store/notificationStore";
 import Sidebar from "../Sidebar";
 import Header from "../Header";
+
+// An expired or invalid session makes every /api call return 401 while the
+// page keeps rendering empty state, so send the user back to /login instead.
+async function checkSession() {
+  try {
+    const res = await fetch("/api/auth/status", { cache: "no-store" });
+    // 503 means the status check itself is degraded; don't log anyone out.
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.degraded === true) return;
+    if (data.requireLogin !== false && !data.authenticated && !data.tunnelBlocked) {
+      window.location.replace("/login");
+    }
+  } catch {
+    // Network error: the server may be restarting; keep the page.
+  }
+}
 
 function getToastStyle(type) {
   if (type === "success") {
@@ -36,6 +53,24 @@ export default function DashboardLayout({ children }) {
   const pathname = usePathname();
   const notifications = useNotificationStore((state) => state.notifications);
   const removeNotification = useNotificationStore((state) => state.removeNotification);
+
+  useEffect(() => {
+    checkSession();
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") checkSession();
+    };
+    // A page restored from the back/forward cache (e.g. Back after logout)
+    // skips the server guard, so reload it through the guard.
+    const onPageShow = (e) => {
+      if (e.persisted) window.location.reload();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pageshow", onPageShow);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pageshow", onPageShow);
+    };
+  }, []);
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-bg">

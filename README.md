@@ -656,7 +656,7 @@ Seamless translation between formats:
 #### Cloud Runtime Notes
 
 - Prefer server-side cloud variables in production:
-  - `BASE_URL` (internal callback URL used by sync scheduler)
+  - `BASE_URL` (internal callback URL used by sync scheduler; not used for OIDC/SAML redirects, see `AUTH_PUBLIC_URL`)
   - `CLOUD_URL` (cloud sync endpoint base)
 - `NEXT_PUBLIC_BASE_URL` and `NEXT_PUBLIC_CLOUD_URL` are still supported for compatibility/UI, but server runtime now prioritizes `BASE_URL`/`CLOUD_URL`.
 - Cloud sync requests now use timeout + fail-fast behavior to avoid UI hanging when cloud DNS/network is unavailable.
@@ -1292,7 +1292,8 @@ docker pull decolua/9router:latest   # update to latest
 | `PORT`                                               | framework default                        | Service port (`20128` in examples)                                                  |
 | `HOSTNAME`                                           | framework default                        | Bind host (Docker defaults to `0.0.0.0`)                                            |
 | `NODE_ENV`                                           | runtime default                          | Set `production` for deploy                                                         |
-| `BASE_URL`                                           | `http://localhost:20128`                 | Server-side internal base URL used by cloud sync jobs                               |
+| `BASE_URL`                                           | `http://localhost:20128`                 | Server-side internal base URL used by cloud sync jobs (not used for SSO redirects)  |
+| `AUTH_PUBLIC_URL`                                    | derived from request                     | Public dashboard URL for OIDC/SAML redirect and callback URLs (behind a proxy that drops Host / X-Forwarded-Host) |
 | `CLOUD_URL`                                          | `https://9router.com`                    | Server-side cloud sync endpoint base URL                                            |
 | `NEXT_PUBLIC_BASE_URL`                               | `http://localhost:3000`                  | Backward-compatible/public base URL (prefer `BASE_URL` for server runtime)          |
 | `NEXT_PUBLIC_CLOUD_URL`                              | `https://9router.com`                    | Backward-compatible/public cloud URL (prefer `CLOUD_URL` for server runtime)        |

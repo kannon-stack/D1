@@ -2,35 +2,32 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getSettings } from "@/lib/localDb";
 import {
-  getSamlBaseUrl,
   isSamlConfigured,
   pickSamlDisplayName,
   pickSamlEmail,
   validateSamlResponse,
 } from "@/lib/auth/saml.js";
+import { getPublicOrigin } from "@/lib/auth/publicOrigin";
 import { setDashboardAuthCookie } from "@/lib/auth/dashboardSession";
 import { checkLock, recordFail, recordSuccess, getClientIp } from "@/lib/auth/loginLimiter";
+import { isSsoTypeEnabled } from "@/lib/auth/authMode";
+import { isTunnelDashboardBlocked } from "@/lib/auth/tunnelAccess";
+
+// The IdP POSTs here. 303 makes the browser follow with a GET, so it does not re-POST
+// the SAMLResponse and the top-level navigation carries the new Lax auth_token.
+function redirect(path, origin) {
+  return NextResponse.redirect(new URL(path, origin), 303);
+}
 
 export async function POST(request) {
   const settings = await getSettings();
-  const origin = getSamlBaseUrl(request, settings);
+  const origin = getPublicOrigin(request);
   const ip = getClientIp(request);
 
   const lock = checkLock(ip);
   if (lock.locked) {
-    return NextResponse.redirect(
-      new URL(
-        `/login?error=${encodeURIComponent(`Too many failed attempts. Try again in ${lock.retryAfter}s.`)}`,
-        origin
-      )
-    );
+    return redirect("/login?error=saml_rate_limited", origin);
   }
-
-  const cookieStore = await cookies();
-  const storedRequestId = cookieStore.get("saml_state")?.value || "";
-
-  // Always clear saml_state cookie after attempt
-  cookieStore.delete("saml_state");
 
   try {
     const formData = await request.formData();
@@ -38,32 +35,36 @@ export async function POST(request) {
 
     if (!SAMLResponse) {
       recordFail(ip);
-      return NextResponse.redirect(new URL("/login?error=saml_missing_response", origin));
+      return redirect("/login?error=saml_missing_response", origin);
     }
 
-    if (!isSamlConfigured(settings)) {
+    if (!isSsoTypeEnabled(settings, "saml") || !isSamlConfigured(settings)) {
       recordFail(ip);
-      return NextResponse.redirect(new URL("/login?error=saml_not_configured", origin));
+      return redirect("/login?error=saml_not_configured", origin);
     }
 
-    const profile = await validateSamlResponse(request, { SAMLResponse }, storedRequestId, settings);
+    if (isTunnelDashboardBlocked(request, settings)) {
+      return redirect("/login?error=tunnel_dashboard_disabled", origin);
+    }
+
+    const profile = await validateSamlResponse(request, { SAMLResponse }, settings);
 
     const samlEmail = pickSamlEmail(profile, settings) || null;
     const samlName = pickSamlDisplayName(profile, settings) || "SAML user";
 
     recordSuccess(ip);
 
+    const cookieStore = await cookies();
     await setDashboardAuthCookie(cookieStore, request, {
       saml: true,
       samlEmail,
       samlName,
     });
 
-    return NextResponse.redirect(new URL("/dashboard", origin));
+    return redirect("/dashboard", origin);
   } catch (error) {
+    console.error("[auth/saml/acs] SAML response rejected:", error);
     recordFail(ip);
-    return NextResponse.redirect(
-      new URL(`/login?error=${encodeURIComponent(error.message || "saml_acs_failed")}`, origin)
-    );
+    return redirect("/login?error=saml_acs_failed", origin);
   }
 }

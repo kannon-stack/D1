@@ -1226,7 +1226,7 @@ OPENAI_API_KEY="your-cloud-key" bash tester/security/test-cloud-openai-compatibl
 
 ### API управления и панели
 
-- Аутентификация/настройки: `/api/auth/login`, `/api/auth/logout`, `/api/settings`, `/api/settings/require-login`
+- Аутентификация/настройки: `/api/auth/login`, `/api/auth/logout`, `/api/settings`
 - Управление провайдерами: `/api/providers`, `/api/providers/[id]`, `/api/providers/[id]/test`, `/api/providers/[id]/models`, `/api/providers/validate`, `/api/provider-n*`
 - OAuth-потоки: `/api/oauth/[provider]/[action]` (+ специфичные для провайдеров импорты, такие как Cursor/Kiro)
 - Конфигурация маршрутизации: `/api/models/alias`, `/api/combos*`, `/api/keys*`, `/api/pricing`
@@ -1238,7 +1238,7 @@ OPENAI_API_KEY="your-cloud-key" bash tester/security/test-cloud-openai-compatibl
 
 - Маршруты панели (`/dashboard/*`) используют защиту cookie `auth_token`.
 - Вход использует сохранённый хеш пароля при наличии; иначе откатывается к `INITIAL_PASSWORD`.
-- `requireLogin` можно переключить через `/api/settings/require-login`.
+- `requireLogin` можно переключить через `PATCH /api/settings`.
 
 ### Обработка запросов (высокоуровнево)
 

@@ -24,7 +24,7 @@ vi.mock("@/lib/localDb", () => ({
 }));
 
 vi.mock("@/lib/auth/oidc", () => ({
-  isOidcConfigured: mocks.isOidcConfigured,
+  isOidcLoginUsable: mocks.isOidcConfigured,
 }));
 
 vi.mock("@/lib/auth/dashboardSession", () => ({
@@ -58,12 +58,42 @@ describe("GET /api/auth/status", () => {
     expect(response.body.authenticated).toBe(false);
   });
 
-  it("fails closed when status dependencies throw", async () => {
+  it("resolves ssoType and reports a blocked tunnel host so the login page does not loop", async () => {
+    mocks.getSettings.mockResolvedValue({
+      requireLogin: true,
+      authMode: "saml",
+      tunnelUrl: "https://abc.trycloudflare.com",
+      tunnelDashboardAccess: false,
+    });
+    mocks.getDashboardAuthSession.mockResolvedValue({ authenticated: true });
+
+    const tunnel = await GET({ headers: new Headers({ host: "abc.trycloudflare.com" }) });
+    const local = await GET({ headers: new Headers({ host: "localhost:20128" }) });
+
+    expect(tunnel.body.ssoType).toBe("saml");
+    expect(tunnel.body.tunnelBlocked).toBe(true);
+    expect(local.body.tunnelBlocked).toBe(false);
+  });
+
+  it("fails closed with a 503 marked degraded when status dependencies throw", async () => {
     mocks.getSettings.mockRejectedValue(new Error("database unavailable"));
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     const response = await GET();
 
+    expect(response.status).toBe(503);
+    expect(response.body.degraded).toBe(true);
     expect(response.body.authenticated).toBe(false);
     expect(response.body.requireLogin).toBe(true);
+    errorSpy.mockRestore();
+  });
+
+  it("does not mark a healthy answer as degraded", async () => {
+    mocks.getDashboardAuthSession.mockResolvedValue(null);
+
+    const response = await GET();
+
+    expect(response.status).toBe(200);
+    expect(response.body.degraded).toBeUndefined();
   });
 });

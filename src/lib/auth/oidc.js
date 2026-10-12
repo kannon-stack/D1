@@ -1,6 +1,9 @@
 import crypto from "node:crypto";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { getSettings } from "@/lib/localDb";
+import { isSsoTypeEnabled } from "@/lib/auth/authMode";
+
+export { getPublicOrigin } from "@/lib/auth/publicOrigin";
 
 export const OIDC_COOKIE_NAMES = {
   state: "oidc_state",
@@ -9,35 +12,21 @@ export const OIDC_COOKIE_NAMES = {
 };
 
 const DEFAULT_SCOPES = "openid profile email";
-const DEFAULT_LOGIN_LABEL = "Sign in with OIDC";
+// Without a timeout an unreachable IdP leaves the browser on a blank loading tab.
+const OIDC_FETCH_TIMEOUT_MS = 10_000;
+// Google documents both forms as valid `iss` values for its ID tokens.
+const GOOGLE_ISSUERS = ["https://accounts.google.com", "accounts.google.com"];
 
 function trimTrailingSlashes(value) {
   return (value || "").trim().replace(/\/+$/, "");
 }
 
-function normalizeScopes(value) {
-  return (value || DEFAULT_SCOPES).trim() || DEFAULT_SCOPES;
+export function isGoogleIssuer(issuer) {
+  return GOOGLE_ISSUERS.includes(trimTrailingSlashes(issuer));
 }
 
-export function getPublicOrigin(request) {
-  const configuredBaseUrl =
-    process.env.BASE_URL ||
-    process.env.NEXT_PUBLIC_BASE_URL ||
-    "";
-
-  if (configuredBaseUrl) {
-    return trimTrailingSlashes(configuredBaseUrl);
-  }
-
-  const forwardedProto = request?.headers?.get?.("x-forwarded-proto") || "";
-  const forwardedHost = request?.headers?.get?.("x-forwarded-host") || "";
-  const host = forwardedHost || request?.headers?.get?.("host") || "";
-  if (host) {
-    const protocol = (forwardedProto || new URL(request.url).protocol || "http:").replace(/:$/, "");
-    return `${protocol}://${host}`.replace(/\/+$/, "");
-  }
-
-  return trimTrailingSlashes(new URL(request.url).origin);
+function normalizeScopes(value) {
+  return (value || DEFAULT_SCOPES).trim() || DEFAULT_SCOPES;
 }
 
 export function isOidcConfigured(settings) {
@@ -48,9 +37,17 @@ export function isOidcConfigured(settings) {
   );
 }
 
+// Google sign-in rejects everyone until an allowlist exists (checkOidcAllowedIdentity),
+// so until then it must not count as a working SSO method: the login page and the
+// password route keep password login open instead of locking the admin out.
+export function isOidcLoginUsable(settings) {
+  return isOidcConfigured(settings) &&
+    !(isGoogleIssuer(settings?.oidcIssuerUrl) && !parseOidcAllowedEmails(settings?.oidcAllowedEmails).length);
+}
+
 export async function getOidcRuntimeConfig() {
   const settings = await getSettings();
-  if (!["oidc", "both"].includes(settings.authMode) || !isOidcConfigured(settings)) return null;
+  if (!isSsoTypeEnabled(settings, "oidc") || !isOidcConfigured(settings)) return null;
 
   const issuerUrl = trimTrailingSlashes(settings.oidcIssuerUrl);
   return {
@@ -58,13 +55,39 @@ export async function getOidcRuntimeConfig() {
     clientId: settings.oidcClientId.trim(),
     clientSecret: settings.oidcClientSecret.trim(),
     scopes: normalizeScopes(settings.oidcScopes),
-    loginLabel: (settings.oidcLoginLabel || DEFAULT_LOGIN_LABEL).trim() || DEFAULT_LOGIN_LABEL,
+    allowedEmails: settings.oidcAllowedEmails || "",
   };
+}
+
+// "you@gmail.com, @example.com" -> ["you@gmail.com", "@example.com"]
+export function parseOidcAllowedEmails(value) {
+  return String(value || "")
+    .split(/[\s,]+/)
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+// Returns null when the identity may sign in, otherwise the /login error code.
+// Any Google account can complete Google sign-in, so Google requires a list; other
+// issuers control access themselves unless the admin also sets a list.
+export function checkOidcAllowedIdentity(payload, { issuer, allowedEmails } = {}) {
+  const entries = parseOidcAllowedEmails(allowedEmails);
+  const google = isGoogleIssuer(issuer);
+  if (!entries.length) return google ? "oidc_allowlist_required" : null;
+
+  const verified = google ? payload?.email_verified === true : payload?.email_verified !== false;
+  const email = String(payload?.email || "").trim().toLowerCase();
+  if (!verified || !email) return "oidc_email_not_allowed";
+
+  const at = email.lastIndexOf("@");
+  const domain = at === -1 ? "" : email.slice(at);
+  const allowed = entries.some((entry) => (entry.startsWith("@") ? entry === domain : entry === email));
+  return allowed ? null : "oidc_email_not_allowed";
 }
 
 export async function fetchOidcDiscovery(issuerUrl) {
   const discoveryUrl = `${trimTrailingSlashes(issuerUrl)}/.well-known/openid-configuration`;
-  const res = await fetch(discoveryUrl, { cache: "no-store" });
+  const res = await fetch(discoveryUrl, { cache: "no-store", signal: AbortSignal.timeout(OIDC_FETCH_TIMEOUT_MS) });
   if (!res.ok) {
     throw new Error(`Failed to load OIDC discovery document from ${discoveryUrl}`);
   }
@@ -130,6 +153,7 @@ export async function exchangeOidcCode({
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
+    signal: AbortSignal.timeout(OIDC_FETCH_TIMEOUT_MS),
   });
 
   const data = await res.json().catch(() => ({}));
@@ -168,6 +192,7 @@ export async function probeOidcClientSecret({
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
+    signal: AbortSignal.timeout(OIDC_FETCH_TIMEOUT_MS),
   });
 
   const data = await res.json().catch(() => ({}));
@@ -216,12 +241,15 @@ export async function verifyOidcIdToken({
   jwksUri,
   nonce,
 }) {
-  const jwks = createRemoteJWKSet(new URL(jwksUri));
+  const jwks = createRemoteJWKSet(new URL(jwksUri), { timeoutDuration: OIDC_FETCH_TIMEOUT_MS });
   const { payload } = await jwtVerify(idToken, jwks, {
-    issuer,
+    issuer: GOOGLE_ISSUERS.includes(issuer) ? GOOGLE_ISSUERS : issuer,
     audience,
-    nonce,
   });
+  // jose does not check `nonce`; it must match the one sent with the authorization request.
+  if (!nonce || payload.nonce !== nonce) {
+    throw new Error("OIDC id_token nonce mismatch");
+  }
   return payload;
 }
 

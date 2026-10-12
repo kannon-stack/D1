@@ -1,18 +1,20 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getSettings } from "@/lib/localDb";
-import { isOidcConfigured } from "@/lib/auth/oidc";
+import { isOidcLoginUsable } from "@/lib/auth/oidc";
 import { isSamlConfigured } from "@/lib/auth/saml.js";
 import { getDashboardAuthSession } from "@/lib/auth/dashboardSession";
+import { getSsoType } from "@/lib/auth/authMode";
+import { isTunnelDashboardBlocked } from "@/lib/auth/tunnelAccess";
 
-export async function GET() {
+export async function GET(request) {
   try {
     const settings = await getSettings();
     const cookieStore = await cookies();
     const session = await getDashboardAuthSession(cookieStore.get("auth_token")?.value);
     const requireLogin = settings.requireLogin !== false;
     const authMode = settings.authMode || "password";
-    const ssoType = settings.ssoType || "oidc";
+    const ssoType = getSsoType(settings);
     const oidcName = String(session?.oidcName || "").trim();
     const oidcEmail = String(session?.oidcEmail || "").trim();
     const samlName = String(session?.samlName || "").trim();
@@ -31,7 +33,7 @@ export async function GET() {
       requireLogin,
       authMode,
       ssoType,
-      oidcConfigured: isOidcConfigured(settings),
+      oidcConfigured: isOidcLoginUsable(settings),
       oidcLoginLabel: (settings.oidcLoginLabel || "Sign in with OIDC").trim() || "Sign in with OIDC",
       samlConfigured: isSamlConfigured(settings),
       samlLoginLabel: (settings.samlLoginLabel || "Sign in with SAML SSO").trim() || "Sign in with SAML SSO",
@@ -39,6 +41,7 @@ export async function GET() {
       displayName,
       loginMethod,
       authenticated: !!session,
+      tunnelBlocked: isTunnelDashboardBlocked(request, settings),
       oidcName: oidcName || null,
       oidcEmail: oidcEmail || null,
       oidcLogin: !!session?.oidc,
@@ -46,7 +49,10 @@ export async function GET() {
       samlEmail: samlEmail || null,
       samlLogin: !!session?.saml,
     });
-  } catch {
+  } catch (error) {
+    // Fail closed, but with a 503 and `degraded` so clients can tell this apart from
+    // a real "not signed in" answer and retry instead of showing the login form for good.
+    console.error("[auth/status] Could not read auth status:", error);
     return NextResponse.json({
       requireLogin: true,
       authMode: "password",
@@ -59,12 +65,14 @@ export async function GET() {
       displayName: "Password user",
       loginMethod: "Password",
       authenticated: false,
+      tunnelBlocked: false,
       oidcName: null,
       oidcEmail: null,
       oidcLogin: false,
       samlName: null,
       samlEmail: null,
       samlLogin: false,
-    });
+      degraded: true,
+    }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
 }
