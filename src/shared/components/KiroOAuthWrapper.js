@@ -27,7 +27,7 @@ export default function KiroOAuthWrapper({ isOpen, providerInfo, onSuccess, onCl
       // Use social login with manual callback
       setAuthMethod("social");
       setSocialProvider(config.provider);
-    } else if (method === "import" || method === "api-key") {
+    } else if (method === "import" || method === "import-cli-proxy" || method === "api-key") {
       // Import / API-key handled in KiroAuthModal, just close
       onSuccess?.();
     }
@@ -53,8 +53,10 @@ export default function KiroOAuthWrapper({ isOpen, providerInfo, onSuccess, onCl
     onClose?.(); // Close modal after success
   };
 
-  // Show method selection first
+  // Show method selection first. Unmount it while closed so the next open
+  // starts on the chooser with no previous token/key left in state.
   if (!authMethod) {
+    if (!isOpen) return null;
     return (
       <KiroAuthModal
         isOpen={isOpen}

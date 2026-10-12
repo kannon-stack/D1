@@ -7,9 +7,28 @@ import { DATA_DIR } from "@/lib/dataDir";
 import { getSettings } from "@/lib/localDb";
 
 const DEFAULT_PASSWORD = "123456";
+const SESSION_MAX_AGE_SECONDS = 24 * 60 * 60;
+
+// Example values published in .env.example and the READMEs. Anyone can sign a session
+// with them, so they are treated as unset and the generated secret is used instead.
+const PLACEHOLDER_JWT_SECRETS = new Set([
+  "change-me-to-a-long-random-secret",
+  "your-secure-secret-change-this",
+  "your-secure-secret-change-this-to-random-string",
+  "your-secure-secret",
+  "your-secret",
+  "generated-secret-here",
+  "tu-secreto-seguro-cámbialo",
+  "votre-secret-sécurisé-changez-le",
+]);
 
 function loadJwtSecret() {
-  if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
+  const envSecret = process.env.JWT_SECRET;
+  const trimmed = (envSecret || "").trim();
+  if (trimmed && !PLACEHOLDER_JWT_SECRETS.has(trimmed)) return envSecret;
+  if (trimmed) {
+    console.warn("[auth] JWT_SECRET is a published example value; ignoring it and using DATA_DIR/jwt-secret instead.");
+  }
   const file = path.join(DATA_DIR, "jwt-secret");
   try {
     return fs.readFileSync(file, "utf8").trim();
@@ -24,7 +43,8 @@ const SECRET = new TextEncoder().encode(loadJwtSecret());
 
 export function shouldUseSecureCookie(request) {
   const forceSecureCookie = process.env.AUTH_COOKIE_SECURE === "true";
-  const forwardedProto = request?.headers?.get?.("x-forwarded-proto");
+  // Chained proxies send "https,http"; the first value is the client-facing scheme.
+  const forwardedProto = (request?.headers?.get?.("x-forwarded-proto") || "").split(",")[0].trim();
   const isHttpsRequest = forwardedProto === "https";
   return forceSecureCookie || isHttpsRequest;
 }
@@ -33,7 +53,7 @@ export async function createDashboardAuthToken(claims = {}) {
   return new SignJWT({ authenticated: true, ...claims })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("24h")
+    .setExpirationTime(`${SESSION_MAX_AGE_SECONDS}s`)
     .sign(SECRET);
 }
 
@@ -64,6 +84,7 @@ export async function setDashboardAuthCookie(cookieStore, request, claims = {}) 
     secure: shouldUseSecureCookie(request),
     sameSite: "lax",
     path: "/",
+    maxAge: SESSION_MAX_AGE_SECONDS,
   });
 }
 

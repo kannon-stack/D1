@@ -54,6 +54,7 @@ export async function GET(request) {
 
     return NextResponse.redirect(authUrl);
   } catch (error) {
-    return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(error.message || "oidc_start_failed")}`, getPublicOrigin(request)));
+    console.error("[auth/oidc/start] Could not start sign-in:", error);
+    return NextResponse.redirect(new URL("/login?error=oidc_start_failed", getPublicOrigin(request)));
   }
 }

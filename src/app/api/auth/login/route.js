@@ -3,7 +3,7 @@ import { getSettings } from "@/lib/localDb";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import { setDashboardAuthCookie } from "@/lib/auth/dashboardSession";
-import { isOidcConfigured } from "@/lib/auth/oidc";
+import { isOidcLoginUsable } from "@/lib/auth/oidc";
 import { isSamlConfigured } from "@/lib/auth/saml.js";
 import { checkLock, recordFail, recordSuccess, getClientIp } from "@/lib/auth/loginLimiter";
 import { isLocalRequest } from "@/dashboardGuard";
@@ -12,6 +12,11 @@ import { isTunnelDashboardBlocked } from "@/lib/auth/tunnelAccess";
 
 const RESET_HINT = "Forgot password? Reset to default via 9Router CLI → Settings → Reset Password to Default.";
 const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
+// INITIAL_PASSWORD values copied from .env.example or the READMEs are as public as
+// "123456", so they keep the remote default-password guard below in force.
+const PLACEHOLDER_INITIAL_PASSWORDS = new Set([
+  "123456", "change-me", "your-password", "your-secure-password", "tu-contraseña", "votre-mot-de-passe",
+]);
 
 export async function POST(request) {
   try {
@@ -40,7 +45,7 @@ export async function POST(request) {
       if (ssoType === "saml" && isSamlConfigured(settings)) {
         return NextResponse.json({ error: "Password login is disabled. Use SAML SSO sign in." }, { status: 403 });
       }
-      if (ssoType === "oidc" && isOidcConfigured(settings)) {
+      if (ssoType === "oidc" && isOidcLoginUsable(settings)) {
         return NextResponse.json({ error: "Password login is disabled. Use OIDC sign in." }, { status: 403 });
       }
     }
@@ -59,8 +64,10 @@ export async function POST(request) {
 
       // Default password still in use on a remote client → force a password
       // change before the dashboard is exposed remotely (keeps local UX intact).
+      const envPassword = process.env.INITIAL_PASSWORD;
+      const hasCustomInitialPassword = !!envPassword?.trim() && !PLACEHOLDER_INITIAL_PASSWORDS.has(envPassword.trim());
       const mustChangePassword =
-        !storedHash && !process.env.INITIAL_PASSWORD && !isLocalRequest(request);
+        !storedHash && !hasCustomInitialPassword && !isLocalRequest(request);
 
       if (mustChangePassword) {
         // Do NOT issue a session token: a fresh install's default password is
@@ -77,7 +84,7 @@ export async function POST(request) {
         // oversight: issuing any credential before the default password is
         // rotated re-opens the exact attack chain this branch closes.
         return NextResponse.json(
-          { success: false, error: "Default password must be changed before remote access. Change it from the local machine (or set INITIAL_PASSWORD).", mustChangePassword },
+          { success: false, error: "Default password must be changed before remote access. Change it from the local machine (or set a strong INITIAL_PASSWORD)." },
           { status: 403, headers: NO_STORE_HEADERS }
         );
       }
@@ -85,7 +92,7 @@ export async function POST(request) {
       const cookieStore = await cookies();
       await setDashboardAuthCookie(cookieStore, request);
 
-      return NextResponse.json({ success: true, mustChangePassword: false }, { headers: NO_STORE_HEADERS });
+      return NextResponse.json({ success: true }, { headers: NO_STORE_HEADERS });
     }
 
     const { remainingBeforeLock } = recordFail(ip);

@@ -1,10 +1,12 @@
 import { getSettings } from "@/lib/localDb";
 import { generateSamlMetadata } from "@/lib/auth/saml";
+import { getPublicOrigin } from "@/lib/auth/publicOrigin";
 
 export async function GET(request) {
   try {
     const settings = await getSettings();
-    const origin = new URL(request.url).origin;
+    // request.url carries the bind host (0.0.0.0 / localhost), not the browser's origin.
+    const origin = getPublicOrigin(request);
     const metadataXml = generateSamlMetadata(origin, settings);
 
     return new Response(metadataXml, {

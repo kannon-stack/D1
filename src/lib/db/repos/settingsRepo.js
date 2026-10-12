@@ -33,6 +33,8 @@ const DEFAULT_SETTINGS = {
   oidcClientSecret: "",
   oidcScopes: "openid profile email",
   oidcLoginLabel: "Sign in with OIDC",
+  // Comma/whitespace-separated emails or @domain entries allowed to sign in via OIDC.
+  oidcAllowedEmails: "",
   samlEntryPoint: "",
   samlIssuer: "urn:9router:sp",
   samlCert: "",

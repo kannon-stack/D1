@@ -48,6 +48,7 @@ export default function Sidebar({ onClose }) {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [shutdownCountdown, setShutdownCountdown] = useState(0);
+  const [shutdownError, setShutdownError] = useState("");
   const [enableTranslator, setEnableTranslator] = useState(false);
   const { copied, copy } = useCopyToClipboard(2000);
 
@@ -85,6 +86,7 @@ export default function Sidebar({ onClose }) {
   const handleCopyAndShutdown = async () => {
     try { await navigator.clipboard.writeText(INSTALL_CMD); } catch { /* clipboard blocked */ }
     copy(INSTALL_CMD);
+    setShutdownError("");
     let remaining = UPDATER_CONFIG.shutdownCountdownSec;
     setShutdownCountdown(remaining);
     const timer = setInterval(() => {
@@ -92,8 +94,21 @@ export default function Sidebar({ onClose }) {
       setShutdownCountdown(remaining);
       if (remaining <= 0) {
         clearInterval(timer);
-        fetch("/api/version/shutdown", { method: "POST" }).catch(() => {});
-        setIsDisconnected(true);
+        fetch("/api/version/shutdown", { method: "POST" })
+          .then((res) => {
+            if (res.ok) {
+              setIsDisconnected(true);
+              return;
+            }
+            // fetch doesn't reject on 401/500: the server is still running.
+            setShutdownError(
+              res.status === 401 || res.status === 403
+                ? "Shutdown needs a signed-in session. If login is disabled, stop the server from the CLI/tray instead, then run the command."
+                : `Shutdown failed (HTTP ${res.status}). The server is still running.`
+            );
+          })
+          // A network error means the server already went down.
+          .catch(() => setIsDisconnected(true));
       }
     }, 1000);
   };
@@ -101,6 +116,7 @@ export default function Sidebar({ onClose }) {
   const handleCancelUpdate = () => {
     setIsUpdating(false);
     setShutdownCountdown(0);
+    setShutdownError("");
   };
 
   // Note: legacy updater poll removed. New flow: copy install cmd + shutdown server,
@@ -375,6 +391,7 @@ export default function Sidebar({ onClose }) {
               onCancel={handleCancelUpdate}
               countdown={shutdownCountdown}
               isDisconnected={isDisconnected}
+              error={shutdownError}
             />
           ) : (
             <div className="text-center p-8">
@@ -398,7 +415,7 @@ Sidebar.propTypes = {
   onClose: PropTypes.func,
 };
 
-function ManualUpdatePanel({ latestVersion, installCmd, copied, onCopyAndShutdown, onCancel, countdown, isDisconnected }) {
+function ManualUpdatePanel({ latestVersion, installCmd, copied, onCopyAndShutdown, onCancel, countdown, isDisconnected, error }) {
   const isCountingDown = countdown > 0;
   return (
     <div className="w-full max-w-lg rounded-xl bg-neutral-900/95 border border-white/10 p-6 text-white">
@@ -411,7 +428,9 @@ function ManualUpdatePanel({ latestVersion, installCmd, copied, onCopyAndShutdow
           <p className="text-xs text-white/60">
             {isDisconnected
               ? "Server stopped. Paste the command into a terminal to install."
-              : isCountingDown
+              : error && !isCountingDown
+                ? <span className="text-red-400">{error}</span>
+                : isCountingDown
                 ? `Command copied. Server will stop in ${countdown}s...`
                 : "Click the button below to copy the install command and shutdown."}
           </p>
@@ -455,4 +474,5 @@ ManualUpdatePanel.propTypes = {
   onCancel: PropTypes.func.isRequired,
   countdown: PropTypes.number,
   isDisconnected: PropTypes.bool,
+  error: PropTypes.string,
 };

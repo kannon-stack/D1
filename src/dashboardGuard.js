@@ -31,7 +31,6 @@ const PUBLIC_API_PATHS = [
   "/api/auth/oidc",
   "/api/auth/saml",
   "/api/version",
-  "/api/settings/require-login",
 ];
 
 // Public top-level prefixes (LLM API endpoints with their own API key auth).
@@ -186,6 +185,15 @@ async function isAuthenticated(request) {
   return false;
 }
 
+// With requireLogin=false any page the user visits could otherwise drive state-changing
+// /api calls. Browsers mark those "cross-site"; CLI and curl send no Sec-Fetch-Site.
+// Origin is not compared with Host because reverse proxies rewrite Host.
+function isCrossSiteWrite(request) {
+  const method = (request.method || "GET").toUpperCase();
+  if (method === "GET" || method === "HEAD" || method === "OPTIONS") return false;
+  return request.headers.get("sec-fetch-site") === "cross-site";
+}
+
 function isPublicApi(pathname) {
   if (isPublicLlmApi(pathname)) return true;
   return PUBLIC_API_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
@@ -224,8 +232,14 @@ export async function proxy(request) {
   // Deny-by-default for /api/* — public allow-list bypasses, everything else requires auth.
   if (pathname.startsWith("/api/")) {
     if (isPublicApi(pathname)) return NextResponse.next();
-    if (await hasValidCliToken(request) || await isAuthenticated(request))
+    if (await hasValidCliToken(request) || await hasValidToken(request))
       return NextResponse.next();
+    if ((await loadSettings())?.requireLogin === false) {
+      if (isCrossSiteWrite(request)) {
+        return NextResponse.json({ error: "Cross-site request blocked" }, { status: 403 });
+      }
+      return NextResponse.next();
+    }
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

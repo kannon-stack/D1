@@ -4,16 +4,33 @@ import { useState, useEffect } from "react";
 import { Card, Button, Input } from "@/shared/components";
 import { isSsoEnabled as isSsoAuthMode } from "@/lib/auth/authMode";
 
-// SSO/OIDC/SAML routes redirect back here with ?error=<code or message>.
+// SSO/OIDC/SAML routes redirect back here with ?error=<code>.
 const LOGIN_ERROR_MESSAGES = {
   oidc_not_configured: "OIDC sign-in is not enabled or its configuration is incomplete.",
   oidc_invalid_state: "The sign-in attempt expired or was started from a different address. Please try again.",
   oidc_missing_code: "The identity provider did not return an authorization code. Please try again.",
+  oidc_start_failed: "Could not start OIDC sign-in. Check the server log for details.",
+  oidc_callback_failed: "OIDC sign-in failed. Check the server log for details.",
+  oidc_email_not_allowed: "This account is not allowed to sign in to this dashboard.",
+  oidc_allowlist_required: "Google sign-in is turned off until allowed emails are set in Profile → OIDC.",
   saml_not_configured: "SAML sign-in is not enabled or its configuration is incomplete.",
   saml_missing_response: "The identity provider did not return a SAML response. Please try again.",
+  saml_start_failed: "Could not start SAML sign-in. Check the server log for details.",
+  saml_acs_failed: "SAML sign-in failed. Check the server log for details.",
+  saml_rate_limited: "Too many failed sign-in attempts. Please wait and try again.",
   access_denied: "Sign-in was cancelled or denied by the identity provider.",
   tunnel_dashboard_disabled: "Dashboard access via tunnel is disabled.",
 };
+
+// Never echo free text from the URL: unknown values are shown only when they
+// look like an error code, so a crafted link cannot put a sentence on this page.
+function loginErrorMessage(code) {
+  if (LOGIN_ERROR_MESSAGES[code]) return LOGIN_ERROR_MESSAGES[code];
+  if (/^[a-z0-9_.-]{1,64}$/i.test(code)) return `Sign-in failed (${code}).`;
+  return "Sign-in failed. Check the server log for details.";
+}
+
+const STATUS_TIMEOUT_MS = 10000;
 
 export default function LoginPage() {
   const [password, setPassword] = useState("");
@@ -24,6 +41,10 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [hasPassword, setHasPassword] = useState(null);
   const [tunnelBlocked, setTunnelBlocked] = useState(false);
+  const [statusError, setStatusError] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+  // Bumped by the Retry button to re-run the status check.
+  const [statusAttempt, setStatusAttempt] = useState(0);
   const [authMode, setAuthMode] = useState("password");
   const [ssoType, setSsoType] = useState("oidc");
   const [oidcConfigured, setOidcConfigured] = useState(false);
@@ -39,54 +60,79 @@ export default function LoginPage() {
   }, [retryAfter]);
 
   useEffect(() => {
-    const urlError = new URLSearchParams(window.location.search).get("error");
-    // Drop the error from the URL so a refresh starts clean.
-    if (urlError) window.history.replaceState(null, "", window.location.pathname);
+    let urlError = null;
+    if (statusAttempt === 0) {
+      urlError = new URLSearchParams(window.location.search).get("error");
+      // Drop the error from the URL so a refresh starts clean.
+      if (urlError) window.history.replaceState(null, "", window.location.pathname);
+    }
 
     async function checkAuth() {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      // The timeout also covers reading the body.
+      const timeoutId = setTimeout(() => controller.abort(), STATUS_TIMEOUT_MS);
 
       try {
         const res = await fetch("/api/auth/status", {
           cache: "no-store",
           signal: controller.signal,
         });
-        clearTimeout(timeoutId);
+        const data = res.ok ? await res.json() : null;
 
-        if (res.ok) {
-          const data = await res.json();
-          // The dashboard guard sends tunnel-blocked requests back here, so
-          // redirecting to /dashboard would loop forever on the spinner.
-          if (data.tunnelBlocked === true) {
-            setTunnelBlocked(true);
-            setHasPassword(!!data.hasPassword);
-            return;
-          }
-          if (data.authenticated === true || data.requireLogin === false) {
-            window.location.assign("/dashboard");
-            return;
-          }
-          setHasPassword(!!data.hasPassword);
-          setAuthMode(data.authMode || "password");
-          setSsoType(data.ssoType || "oidc");
-          setOidcConfigured(data.oidcConfigured === true);
-          setOidcLoginLabel(data.oidcLoginLabel || "Sign in with OIDC");
-          setSamlConfigured(data.samlConfigured === true);
-          setSamlLoginLabel(data.samlLoginLabel || "Sign in with SAML SSO");
-        } else {
-          // Safe fallback on non-OK response to avoid infinite loading state.
+        // Non-OK (503) or a degraded fallback payload: the sign-in options are
+        // unknown, so don't silently assume password mode.
+        if (!data || data.degraded === true) {
+          setStatusError(true);
           setHasPassword(true);
+          return;
         }
+        setStatusError(false);
+        // The dashboard guard sends tunnel-blocked requests back here, so
+        // redirecting to /dashboard would loop forever on the spinner.
+        if (data.tunnelBlocked === true) {
+          setTunnelBlocked(true);
+          setHasPassword(!!data.hasPassword);
+          return;
+        }
+        if (data.authenticated === true || data.requireLogin === false) {
+          // replace() keeps this bounce page out of history.
+          window.location.replace("/dashboard");
+          return;
+        }
+        setHasPassword(!!data.hasPassword);
+        setAuthMode(data.authMode || "password");
+        setSsoType(data.ssoType || "oidc");
+        setOidcConfigured(data.oidcConfigured === true);
+        setOidcLoginLabel(data.oidcLoginLabel || "Sign in with OIDC");
+        setSamlConfigured(data.samlConfigured === true);
+        setSamlLoginLabel(data.samlLoginLabel || "Sign in with SAML SSO");
       } catch (err) {
-        clearTimeout(timeoutId);
+        // Timeout, network error or unreadable body.
+        setStatusError(true);
         setHasPassword(true);
       } finally {
-        if (urlError) setSsoError(LOGIN_ERROR_MESSAGES[urlError] || `Sign-in failed: ${urlError}`);
+        clearTimeout(timeoutId);
+        setRetrying(false);
+        if (urlError) setSsoError(loginErrorMessage(urlError));
       }
     }
     checkAuth();
+  }, [statusAttempt]);
+
+  // A page restored from the back/forward cache keeps its old state (e.g. the
+  // spinner before a redirect), so load it again.
+  useEffect(() => {
+    const onPageShow = (e) => {
+      if (e.persisted) window.location.reload();
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
   }, []);
+
+  const handleRetryStatus = () => {
+    setRetrying(true);
+    setStatusAttempt((n) => n + 1);
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -132,7 +178,8 @@ export default function LoginPage() {
   const oidcAvailable = !tunnelBlocked && isSsoEnabled && ssoType === "oidc" && oidcConfigured;
   const ssoAvailable = samlAvailable || oidcAvailable;
 
-  const passwordAvailable = !tunnelBlocked && (authMode === "password" || authMode === "both" || !ssoAvailable);
+  // When the status check failed, keep the password form for recovery.
+  const passwordAvailable = !tunnelBlocked && (statusError || authMode === "password" || authMode === "both" || !ssoAvailable);
 
   // Show loading state while checking password
   if (hasPassword === null) {
@@ -168,6 +215,15 @@ export default function LoginPage() {
           <div className="flex flex-col gap-4">
             {ssoError && <p className="text-xs text-red-500 text-center">{ssoError}</p>}
 
+            {statusError && (
+              <div className="flex flex-col items-center gap-2">
+                <p className="text-xs text-red-500 text-center">Could not load sign-in options.</p>
+                <Button type="button" variant="secondary" size="sm" loading={retrying} onClick={handleRetryStatus}>
+                  Retry
+                </Button>
+              </div>
+            )}
+
             {tunnelBlocked && (
               <p className="text-xs text-amber-600 dark:text-amber-400 text-center">
                 Open the dashboard on the host machine, or enable dashboard access via tunnel in settings.
@@ -186,13 +242,13 @@ export default function LoginPage() {
               </Button>
             )}
 
-            {ssoAvailable && passwordAvailable && <div className="h-px bg-border/60" />}
+            {(ssoAvailable || statusError) && passwordAvailable && <div className="h-px bg-border/60" />}
 
             {passwordAvailable && (
               <form onSubmit={handleLogin} className="flex flex-col gap-4">
                 {isSsoEnabled && !ssoAvailable && (
                   <p className="text-xs text-amber-600 dark:text-amber-400 text-center">
-                    {ssoLabel} login is enabled, but configuration is incomplete. Password login is still available for recovery.
+                    {ssoLabel} login is enabled, but configuration is incomplete{ssoType === "oidc" ? " (Google sign-in also needs allowed emails in Profile → OIDC)" : ""}. Password login is still available for recovery.
                   </p>
                 )}
 

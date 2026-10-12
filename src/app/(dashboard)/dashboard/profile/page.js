@@ -9,6 +9,7 @@ import { cn } from "@/shared/utils/cn";
 import { APP_CONFIG } from "@/shared/constants/config";
 import { LOCALE_COOKIE, normalizeLocale } from "@/i18n/config";
 import { LOCALE_FLAGS } from "@/shared/constants/locales";
+import { useNotificationStore } from "@/store/notificationStore";
 
 function getLocaleFromCookie() {
   if (typeof document === "undefined") return "en";
@@ -17,6 +18,30 @@ function getLocaleFromCookie() {
     .find((c) => c.trim().startsWith(`${LOCALE_COOKIE}=`));
   const value = cookie ? decodeURIComponent(cookie.split("=")[1]) : "en";
   return normalizeLocale(value);
+}
+
+// Same parsing as the server: entries split on commas, whitespace or newlines.
+function parseAllowedEmails(value) {
+  return String(value || "").split(/[\s,]+/).filter(Boolean);
+}
+
+function isGoogleIssuer(issuerUrl) {
+  const value = String(issuerUrl || "").trim();
+  if (!value) return false;
+  try {
+    const url = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(value) ? value : `https://${value}`);
+    return url.hostname.toLowerCase() === "accounts.google.com";
+  } catch {
+    return false;
+  }
+}
+
+// Google signs in any Google account, so the server refuses Google OIDC logins
+// until an allow-list is set; catch that here instead of saving a lockout.
+function googleAllowlistError(authMode, issuerUrl, allowedEmails) {
+  if (authMode === "password" || !isGoogleIssuer(issuerUrl)) return "";
+  if (parseAllowedEmails(allowedEmails).length > 0) return "";
+  return "Google sign-in needs at least one allowed email or @domain entry. Add one under Allowed emails.";
 }
 
 export default function ProfilePage() {
@@ -40,6 +65,7 @@ export default function ProfilePage() {
     oidcClientId: "",
     oidcScopes: "openid profile email",
     oidcLoginLabel: "Sign in with OIDC",
+    oidcAllowedEmails: "",
   });
   const [oidcClientSecret, setOidcClientSecret] = useState("");
   const [oidcStatus, setOidcStatus] = useState({ type: "", message: "" });
@@ -48,7 +74,8 @@ export default function ProfilePage() {
   const [oidcTestStatus, setOidcTestStatus] = useState({ type: "", message: "" });
   const [oidcExpanded, setOidcExpanded] = useState(false);
 
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  // Same origin the server puts in redirect_uri / the SAML ACS (AUTH_PUBLIC_URL or the request).
+  const origin = settings.authPublicOrigin || (typeof window !== "undefined" ? window.location.origin : "");
   const oidcRedirectUri = origin ? `${origin}/api/auth/oidc/callback` : "/api/auth/oidc/callback";
   const samlAcsUrl = origin ? `${origin}/api/auth/saml/acs` : "/api/auth/saml/acs";
   const samlMetadataUrl = origin ? `${origin}/api/auth/saml/metadata` : "/api/auth/saml/metadata";
@@ -83,7 +110,14 @@ export default function ProfilePage() {
 
   useEffect(() => {
     fetch("/api/settings")
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) {
+          // Expired or invalid session: don't store the error body as settings.
+          if (res.status === 401) window.location.replace("/login");
+          throw new Error(`settings ${res.status}`);
+        }
+        return res.json();
+      })
       .then((data) => {
         setSettings(data);
         setOidcForm({
@@ -92,6 +126,7 @@ export default function ProfilePage() {
           oidcClientId: data?.oidcClientId || "",
           oidcScopes: data?.oidcScopes || "openid profile email",
           oidcLoginLabel: data?.oidcLoginLabel || "Sign in with OIDC",
+          oidcAllowedEmails: data?.oidcAllowedEmails || "",
         });
         setOidcClientSecret("");
         setSsoTypeTab(data?.ssoType || "saml");
@@ -346,10 +381,17 @@ export default function ProfilePage() {
     const clientId = oidcForm.oidcClientId.trim();
     const scopes = oidcForm.oidcScopes.trim();
     const loginLabel = oidcForm.oidcLoginLabel.trim();
+    const allowedEmails = oidcForm.oidcAllowedEmails.trim();
     const secret = oidcClientSecret.trim();
 
     if (authMode !== "password" && (!issuerUrl || !clientId || !secret) && !settings.oidcConfigured) {
       setOidcStatus({ type: "error", message: "Issuer URL, client ID, and client secret are required to enable OIDC." });
+      return;
+    }
+
+    const allowlistError = googleAllowlistError(authMode, issuerUrl || settings.oidcIssuerUrl, allowedEmails);
+    if (allowlistError) {
+      setOidcStatus({ type: "error", message: allowlistError });
       return;
     }
 
@@ -365,6 +407,7 @@ export default function ProfilePage() {
         oidcClientId: clientId,
         oidcScopes: scopes || "openid profile email",
         oidcLoginLabel: loginLabel || "Sign in with OIDC",
+        oidcAllowedEmails: allowedEmails,
       };
       if (secret) {
         payload.oidcClientSecret = secret;
@@ -385,6 +428,7 @@ export default function ProfilePage() {
           oidcClientId: data?.oidcClientId || clientId,
           oidcScopes: data?.oidcScopes || scopes || "openid profile email",
           oidcLoginLabel: data?.oidcLoginLabel || loginLabel || "Sign in with OIDC",
+          oidcAllowedEmails: data?.oidcAllowedEmails ?? allowedEmails,
         });
         setOidcClientSecret("");
         setOidcStatus({
@@ -410,10 +454,19 @@ export default function ProfilePage() {
     const issuerUrl = oidcForm.oidcIssuerUrl.trim();
     const clientId = oidcForm.oidcClientId.trim();
     const scopes = oidcForm.oidcScopes.trim();
+    const allowedEmails = oidcForm.oidcAllowedEmails.trim();
     const secret = oidcClientSecret.trim();
+    const authMode = oidcForm.authMode || settings.authMode || "password";
 
     if (!issuerUrl || !clientId) {
       setOidcTestStatus({ type: "error", message: "Issuer URL and client ID are required to test the connection." });
+      return;
+    }
+
+    // Testing saves the form first, so apply the same check as Save.
+    const allowlistError = googleAllowlistError(authMode, issuerUrl, allowedEmails);
+    if (allowlistError) {
+      setOidcTestStatus({ type: "error", message: allowlistError });
       return;
     }
 
@@ -426,11 +479,12 @@ export default function ProfilePage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          authMode: oidcForm.authMode || settings.authMode || "password",
+          authMode,
           oidcIssuerUrl: issuerUrl,
           oidcClientId: clientId,
           oidcScopes: scopes || "openid profile email",
           oidcLoginLabel: oidcForm.oidcLoginLabel.trim() || "Sign in with OIDC",
+          oidcAllowedEmails: allowedEmails,
           ...(secret ? { oidcClientSecret: secret } : {}),
         }),
       });
@@ -738,7 +792,15 @@ export default function ProfilePage() {
   const handleShutdown = async () => {
     setIsShuttingDown(true);
     try {
-      await fetch("/api/version/shutdown", { method: "POST" });
+      const res = await fetch("/api/version/shutdown", { method: "POST" });
+      // fetch doesn't reject on 401/500: the server is still running.
+      if (!res.ok) {
+        useNotificationStore.getState().error(
+          res.status === 401 || res.status === 403
+            ? "Shutdown needs a signed-in session. If login is disabled, stop the server from the CLI/tray instead."
+            : `Shutdown failed (HTTP ${res.status}).`
+        );
+      }
     } catch (e) {
       // Expected to fail as server shuts down; ignore error
     }
@@ -750,7 +812,12 @@ export default function ProfilePage() {
     try {
       const res = await fetch("/api/auth/logout", { method: "POST" });
       if (res.ok) {
-        window.location.assign("/login");
+        try {
+          // Provider OAuth popup result (code/state) written by /callback.
+          localStorage.removeItem("oauth_callback");
+        } catch {}
+        // replace() so Back doesn't return to the signed-out dashboard.
+        window.location.replace("/login");
       }
     } catch (err) {
       console.error("Failed to logout:", err);
@@ -1383,6 +1450,21 @@ export default function ProfilePage() {
                         onChange={(e) => updateOidcForm("oidcLoginLabel", e.target.value)}
                         disabled={loading || oidcLoading}
                       />
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <label className="font-medium text-sm sm:text-base">Allowed emails</label>
+                      <textarea
+                        rows={3}
+                        placeholder={"you@gmail.com\n@example.com"}
+                        value={oidcForm.oidcAllowedEmails}
+                        onChange={(e) => updateOidcForm("oidcAllowedEmails", e.target.value)}
+                        className="w-full p-2.5 rounded-lg border border-border bg-bg text-xs font-mono text-text-main focus:outline-none focus:border-primary"
+                        disabled={loading || oidcLoading}
+                      />
+                      <p className="text-xs sm:text-sm text-text-muted">
+                        One entry per line or separated by commas. Use an exact address (you@gmail.com) or @example.com to allow a whole domain; the email must be verified by the provider. Required for Google. Left empty with another provider, anyone it signs in gets access.
+                      </p>
                     </div>
                   </div>
 

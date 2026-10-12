@@ -24,7 +24,7 @@ vi.mock("@/lib/localDb", () => ({
 }));
 
 vi.mock("@/lib/auth/oidc", () => ({
-  isOidcConfigured: mocks.isOidcConfigured,
+  isOidcLoginUsable: mocks.isOidcConfigured,
 }));
 
 vi.mock("@/lib/auth/dashboardSession", () => ({
@@ -75,12 +75,25 @@ describe("GET /api/auth/status", () => {
     expect(local.body.tunnelBlocked).toBe(false);
   });
 
-  it("fails closed when status dependencies throw", async () => {
+  it("fails closed with a 503 marked degraded when status dependencies throw", async () => {
     mocks.getSettings.mockRejectedValue(new Error("database unavailable"));
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     const response = await GET();
 
+    expect(response.status).toBe(503);
+    expect(response.body.degraded).toBe(true);
     expect(response.body.authenticated).toBe(false);
     expect(response.body.requireLogin).toBe(true);
+    errorSpy.mockRestore();
+  });
+
+  it("does not mark a healthy answer as degraded", async () => {
+    mocks.getDashboardAuthSession.mockResolvedValue(null);
+
+    const response = await GET();
+
+    expect(response.status).toBe(200);
+    expect(response.body.degraded).toBeUndefined();
   });
 });

@@ -3,6 +3,7 @@ import { getSettings, updateSettings } from "@/lib/localDb";
 import { applyOutboundProxyEnv } from "@/lib/network/outboundProxy";
 import { resetComboRotation } from "open-sse/services/combo.js";
 import bcrypt from "bcryptjs";
+import { getPublicOrigin } from "@/lib/auth/publicOrigin";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -14,7 +15,7 @@ const SETTINGS_RESPONSE_HEADERS = {
 // Secrets must never be mass-assigned from request body (CWE-915)
 const PROTECTED_SETTING_KEYS = ["password", "mitmSudoEncrypted"];
 
-export async function GET() {
+export async function GET(request) {
   try {
     const settings = await getSettings();
     const { password, oidcClientSecret, ...safeSettings } = settings;
@@ -27,7 +28,9 @@ export async function GET() {
       ...safeSettings, 
       enableRequestLogs,
       enableTranslator,
-      hasPassword: !!password
+      hasPassword: !!password,
+      // Lets the profile page show the exact redirect URI / ACS URL the server will send.
+      authPublicOrigin: request ? getPublicOrigin(request) : "",
     }, { headers: SETTINGS_RESPONSE_HEADERS });
   } catch (error) {
     console.log("Error getting settings:", error);
@@ -74,6 +77,12 @@ export async function PATCH(request) {
       if (!body.oidcClientSecret || !String(body.oidcClientSecret).trim()) {
         delete body.oidcClientSecret;
       }
+    }
+
+    // Stored as one string ("you@gmail.com, @example.com"); the OIDC callback parses it.
+    if (Object.prototype.hasOwnProperty.call(body, "oidcAllowedEmails")) {
+      const value = body.oidcAllowedEmails;
+      body.oidcAllowedEmails = (Array.isArray(value) ? value.join(", ") : String(value ?? "")).trim();
     }
 
     const settings = await updateSettings(body);

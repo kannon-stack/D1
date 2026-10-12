@@ -2,13 +2,23 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { Button } from "@/shared/components";
+import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
+
+// How long to wait for the dashboard to acknowledge the relayed callback
+// before keeping this window open with the URL for manual paste.
+const ACK_TIMEOUT_MS = 2000;
 
 /**
  * OAuth Callback Page Content
  */
 function CallbackContent() {
   const searchParams = useSearchParams();
-  const [status, setStatus] = useState("processing");
+  const [status, setStatus] = useState("processing"); // processing | success | done | manual | error
+  const { copied, copy } = useCopyToClipboard();
+  const errorParam = searchParams.get("error");
+  // Only show a provider error code, never free text from the URL.
+  const errorCode = errorParam && /^[a-z0-9_.-]{1,64}$/i.test(errorParam) ? errorParam : null;
 
   useEffect(() => {
     const code = searchParams.get("code");
@@ -26,17 +36,49 @@ function CallbackContent() {
       fullUrl: window.location.href,
     };
 
-    let relayed = false;
-
     // Trusted origins that may receive this callback. The OAuth code/state
     // must only be relayed to the dashboard window we expect to be the opener
-    // (same origin) or the Codex helper that listens on a fixed loopback port.
-    // Any other origin is treated as hostile (drive-by attacker that opened
-    // the popup against the well-known redirect_uri to phish the code).
-    const expectedOrigins = [
+    // (this server under any loopback alias of the same port) or the Codex
+    // helper that listens on a fixed loopback port. Any other origin is
+    // treated as hostile (drive-by attacker that opened the popup against
+    // the well-known redirect_uri to phish the code).
+    const { protocol, port } = window.location;
+    const p = port ? `:${port}` : "";
+    const expectedOrigins = [...new Set([
       window.location.origin, // Same origin (for most providers)
+      `${protocol}//localhost${p}`, // Dashboard opened via another loopback alias
+      `${protocol}//127.0.0.1${p}`,
+      `${protocol}//[::1]${p}`,
       "http://localhost:1455", // Codex specific port
-    ];
+    ])];
+
+    if (!(code || token || error)) {
+      const t = setTimeout(() => setStatus("manual"), 0);
+      return () => clearTimeout(t);
+    }
+
+    const timers = [];
+    let acked = false;
+    let channel = null;
+
+    // Close only once the dashboard confirms it received the callback.
+    const handleAck = (data) => {
+      if (acked || data?.type !== "oauth_callback_ack" || (data.state ?? null) !== state) return;
+      acked = true;
+      try {
+        localStorage.removeItem("oauth_callback");
+      } catch { /* storage unavailable */ }
+      if (error) return; // keep the error panel up
+      setStatus("success");
+      timers.push(setTimeout(() => {
+        window.close();
+        timers.push(setTimeout(() => setStatus("done"), 500));
+      }, 1000));
+    };
+    const handleMessage = (event) => {
+      if (expectedOrigins.includes(event.origin)) handleAck(event.data);
+    };
+    window.addEventListener("message", handleMessage);
 
     // Method 1: postMessage to opener (popup mode)
     // Send once per expected origin. The browser delivers the message only
@@ -47,41 +89,40 @@ function CallbackContent() {
       for (const origin of expectedOrigins) {
         try {
           window.opener.postMessage({ type: "oauth_callback", data: callbackData }, origin);
-          relayed = true;
         } catch (e) {
           console.log("postMessage failed:", e);
         }
       }
     }
 
-    // Method 2: BroadcastChannel (same origin tabs)
+    // Method 2: BroadcastChannel (same origin tabs); also carries the ack back
     try {
-      const channel = new BroadcastChannel("oauth_callback");
+      channel = new BroadcastChannel("oauth_callback");
+      channel.onmessage = (event) => handleAck(event.data);
       channel.postMessage(callbackData);
-      channel.close();
-      relayed = true;
     } catch (e) {
       console.log("BroadcastChannel failed:", e);
     }
 
-    // Method 3: localStorage event (fallback)
-    try {
-      localStorage.setItem("oauth_callback", JSON.stringify({ ...callbackData, timestamp: Date.now() }));
-      relayed = true;
-    } catch (e) {
-      console.log("localStorage failed:", e);
-    }
+    if (error) timers.push(setTimeout(() => setStatus("error"), 0));
 
-    if (!(code || token || error)) {
-      setTimeout(() => setStatus("manual"), 0);
-      return;
-    }
+    // No ack: leave a localStorage fallback for a dashboard tab that missed
+    // both channels, and keep this window open with the URL to paste.
+    timers.push(setTimeout(() => {
+      if (acked) return;
+      try {
+        localStorage.setItem("oauth_callback", JSON.stringify({ ...callbackData, timestamp: Date.now() }));
+      } catch (e) {
+        console.log("localStorage failed:", e);
+      }
+      if (!error) setStatus("manual");
+    }, ACK_TIMEOUT_MS));
 
-    setStatus("success");
-    setTimeout(() => {
-      window.close();
-      setTimeout(() => setStatus("done"), 500);
-    }, 1500);
+    return () => {
+      window.removeEventListener("message", handleMessage);
+      if (channel) channel.close();
+      timers.forEach(clearTimeout);
+    };
   }, [searchParams]);
 
   return (
@@ -109,6 +150,19 @@ function CallbackContent() {
           </>
         )}
 
+        {status === "error" && (
+          <>
+            <div className="size-16 mx-auto mb-4 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+              <span className="material-symbols-outlined text-3xl text-red-600">error</span>
+            </div>
+            <h1 className="text-xl font-semibold mb-2">Authorization Failed</h1>
+            <p className="text-text-muted mb-2">
+              The provider did not authorize the connection. Close this window and try again from the dashboard.
+            </p>
+            {errorCode && <code className="text-xs text-red-600">{errorCode}</code>}
+          </>
+        )}
+
         {status === "manual" && (
           <>
             <div className="size-16 mx-auto mb-4 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center">
@@ -116,11 +170,19 @@ function CallbackContent() {
             </div>
             <h1 className="text-xl font-semibold mb-2">Copy This URL</h1>
             <p className="text-text-muted mb-4">
-              Please copy the URL from the address bar and paste it in the application.
+              Copy this URL and paste it into the dashboard&apos;s &quot;paste callback URL manually&quot; field.
             </p>
-            <div className="bg-surface border border-border rounded-lg p-3 text-left">
+            <div className="bg-surface border border-border rounded-lg p-3 text-left mb-3">
               <code className="text-xs break-all">{typeof window !== "undefined" ? window.location.href : ""}</code>
             </div>
+            <Button
+              variant="secondary"
+              icon={copied === "callback_url" ? "check" : "content_copy"}
+              onClick={() => copy(window.location.href, "callback_url")}
+              fullWidth
+            >
+              {copied === "callback_url" ? "Copied" : "Copy URL"}
+            </Button>
           </>
         )}
       </div>

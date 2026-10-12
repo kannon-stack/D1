@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
+import zlib from "node:zlib";
 import {
+  buildSamlAuthorizeUrl,
   formatX509Certificate,
   isSamlConfigured,
   generateSamlMetadata,
@@ -71,26 +73,47 @@ describe("SAML 2.0 Auth Engine Utilities", () => {
   });
 
   describe("InResponseTo Replay Validation", () => {
-    it("throws error when expectedRequestId is supplied but InResponseTo is missing", async () => {
-      const settings = { samlCert: "dummy-cert" };
-      const rawXml = Buffer.from('<Response ID="123"></Response>').toString("base64");
+    const settings = {
+      samlEntryPoint: "https://idp.example.com/sso",
+      samlCert: "MIIC123456789012345678901234567890123456789012345678901234567890",
+    };
+    const req = { url: "http://localhost:20128/api/auth/saml/acs", headers: new Headers({ host: "localhost:20128" }) };
+    const response = (attrs) => Buffer.from(`<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ID="r1"${attrs}></samlp:Response>`).toString("base64");
+
+    async function issueRequestId() {
+      const { authorizeUrl } = await buildSamlAuthorizeUrl(req, settings);
+      const deflated = Buffer.from(new URL(authorizeUrl).searchParams.get("SAMLRequest"), "base64");
+      return zlib.inflateRawSync(deflated).toString("utf8").match(/ID="([^"]+)"/)[1];
+    }
+
+    it("rejects an unsolicited response without InResponseTo", async () => {
       await expect(
-        validateSamlResponse(null, { SAMLResponse: rawXml }, "req-123", settings)
-      ).rejects.toThrow(/InResponseTo mismatch/);
+        validateSamlResponse(req, { SAMLResponse: response("") }, settings)
+      ).rejects.toThrow(/InResponseTo is missing/);
     });
 
-    it("throws error when expectedRequestId is supplied but InResponseTo does not match", async () => {
-      const settings = { samlCert: "dummy-cert" };
-      const rawXml = Buffer.from('<Response InResponseTo="wrong-id"></Response>').toString("base64");
+    it("rejects an InResponseTo this server never issued", async () => {
       await expect(
-        validateSamlResponse(null, { SAMLResponse: rawXml }, "req-123", settings)
-      ).rejects.toThrow(/InResponseTo mismatch/);
+        validateSamlResponse(req, { SAMLResponse: response(' InResponseTo="_unknown"') }, settings)
+      ).rejects.toThrow(/InResponseTo is not valid/);
+    });
+
+    it("accepts an issued request ID once, so a captured response cannot be replayed", async () => {
+      const id = await issueRequestId();
+      const samlResponse = response(` InResponseTo="${id}"`);
+
+      // Gets past the InResponseTo check, then fails on the (missing) signature.
+      const first = await validateSamlResponse(req, { SAMLResponse: samlResponse }, settings).catch((e) => e);
+      expect(first.message).toMatch(/signature/i);
+
+      await expect(
+        validateSamlResponse(req, { SAMLResponse: samlResponse }, settings)
+      ).rejects.toThrow(/InResponseTo is not valid/);
     });
 
     it("throws error if samlCert is not configured", async () => {
-      const rawXml = Buffer.from('<Response ID="123"></Response>').toString("base64");
       await expect(
-        validateSamlResponse(null, { SAMLResponse: rawXml }, "req-123", {})
+        validateSamlResponse(req, { SAMLResponse: response("") }, {})
       ).rejects.toThrow(/Certificate/);
     });
   });
@@ -139,6 +162,10 @@ describe("SAML 2.0 Auth Engine Utilities", () => {
       expect(merged.samlLoginLabel).toBe("Sign in with SAML SSO");
       expect(merged.samlAttributeEmail).toBe("email");
       expect(merged.samlAttributeName).toBe("name");
+    });
+
+    it("defaults the OIDC allowlist to empty", () => {
+      expect(mergeWithDefaults({}).oidcAllowedEmails).toBe("");
     });
   });
 });

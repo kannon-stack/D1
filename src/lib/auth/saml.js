@@ -1,4 +1,53 @@
 import { SAML } from "@node-saml/node-saml";
+import { getPublicOrigin } from "./publicOrigin.js";
+
+// How long an AuthnRequest ID stays valid for its response.
+const SAML_REQUEST_TTL_MS = 10 * 60 * 1000;
+// /api/auth/saml/start is unauthenticated, so a flood of starts must not grow memory
+// without limit; past the cap the oldest pending sign-ins are dropped (and can retry).
+const SAML_CACHE_MAX_ENTRIES = 10_000;
+
+// Implements the cacheProvider interface node-saml calls (saveAsync/getAsync/removeAsync).
+// saveAsync returns null for an existing key with no await in between, so it doubles as
+// an atomic "claim".
+export function createBoundedSamlCache(ttlMs = SAML_REQUEST_TTL_MS, maxEntries = SAML_CACHE_MAX_ENTRIES) {
+  const entries = new Map(); // key -> { createdAt, value }, oldest first
+  const prune = (now) => {
+    for (const [key, entry] of entries) {
+      if (now < entry.createdAt + ttlMs) break;
+      entries.delete(key);
+    }
+  };
+  return {
+    async saveAsync(key, value) {
+      const now = Date.now();
+      prune(now);
+      if (entries.has(key)) return null;
+      while (entries.size >= maxEntries) entries.delete(entries.keys().next().value);
+      const entry = { createdAt: now, value };
+      entries.set(key, entry);
+      return entry;
+    },
+    async getAsync(key) {
+      prune(Date.now());
+      return entries.get(key)?.value ?? null;
+    },
+    async removeAsync(key) {
+      if (key == null || !entries.has(key)) return null;
+      entries.delete(key);
+      return key;
+    },
+  };
+}
+
+// createSamlInstance builds a new SAML object per request, so the AuthnRequest IDs must
+// live in one module-level cache for the ACS to find them; validateInResponseTo "always"
+// rejects unsolicited (IdP-initiated) responses. node-saml only drops an ID when the
+// assertion's SubjectConfirmationData repeats it, so samlConsumedIds makes every
+// InResponseTo single-use regardless. Kept on `global` so dev reloads and separate route
+// bundles share them; per process, which matches the single-process server.
+const samlRequestCache = (global.__samlRequestCache ??= createBoundedSamlCache());
+const samlConsumedIds = (global.__samlConsumedIds ??= createBoundedSamlCache());
 
 /**
  * Formats a raw Base64 string or unformatted X.509 certificate into standard PEM format.
@@ -36,44 +85,6 @@ export function isSamlConfigured(settings) {
 const DUMMY_FALLBACK_CERT =
   "-----BEGIN CERTIFICATE-----\nMIIC...DUMMY...\n-----END CERTIFICATE-----";
 
-function trimTrailingSlashes(str) {
-  return (str || "").replace(/\/+$/, "");
-}
-
-/**
- * Resolves the public Base URL / Origin for SAML requests.
- * Respects settings.baseUrl, process.env.BASE_URL, x-forwarded-proto, and x-forwarded-host.
- * @param {Request} request
- * @param {object} settings
- * @returns {string}
- */
-export function getSamlBaseUrl(request, settings) {
-  const configuredBaseUrl =
-    (settings?.baseUrl || "").trim() ||
-    process.env.BASE_URL ||
-    process.env.NEXT_PUBLIC_BASE_URL ||
-    "";
-
-  if (configuredBaseUrl) {
-    return trimTrailingSlashes(configuredBaseUrl);
-  }
-
-  if (request) {
-    const forwardedProto = request?.headers?.get?.("x-forwarded-proto") || "";
-    const forwardedHost = request?.headers?.get?.("x-forwarded-host") || "";
-    const host = forwardedHost || request?.headers?.get?.("host") || "";
-    if (host) {
-      const protocol = (forwardedProto || new URL(request.url).protocol || "http:").replace(/:$/, "");
-      return `${protocol}://${host}`.replace(/\/+$/, "");
-    }
-    if (request.url) {
-      return trimTrailingSlashes(new URL(request.url).origin);
-    }
-  }
-
-  return "http://localhost:20128";
-}
-
 export function createSamlInstance(settings, origin) {
   const cert = formatX509Certificate(settings?.samlCert || "") || DUMMY_FALLBACK_CERT;
   const callbackUrl = `${origin}/api/auth/saml/acs`;
@@ -85,44 +96,43 @@ export function createSamlInstance(settings, origin) {
     callbackUrl: callbackUrl,
     acceptedClockSkewMs: 60000,
     wantAssertionsSigned: true,
-    validateInResponseTo: "never",
-    requestIdExpirationMs: 28800000, // 8 hours
+    validateInResponseTo: "always",
+    requestIdExpirationPeriodMs: SAML_REQUEST_TTL_MS,
+    cacheProvider: samlRequestCache,
   });
 }
 
 /**
- * Builds SAML AuthnRequest redirect URL and returns { authorizeUrl, requestId }.
+ * Builds SAML AuthnRequest redirect URL and returns { authorizeUrl }.
+ * The request ID is stored in the shared request cache for the ACS to check.
  * @param {Request} request
  * @param {object} settings
- * @returns {Promise<{ authorizeUrl: string, requestId: string }>}
+ * @returns {Promise<{ authorizeUrl: string }>}
  */
 export async function buildSamlAuthorizeUrl(request, settings) {
-  const origin = getSamlBaseUrl(request, settings);
+  const origin = getPublicOrigin(request);
   const samlInstance = createSamlInstance(settings, origin);
 
   const xml = await samlInstance.generateAuthorizeRequestAsync(false, false);
-  const match = xml.match(/ID="([^"]+)"/);
-  const requestId = match ? match[1] : "";
-
   const authorizeUrl = await samlInstance._requestToUrlAsync(xml, null, "authorize", {});
 
-  return { authorizeUrl, requestId };
+  return { authorizeUrl };
 }
 
 /**
  * Validates SAML POST response from IdP ACS callback and returns user profile.
+ * InResponseTo must name an unused AuthnRequest from buildSamlAuthorizeUrl.
  * @param {Request} request
  * @param {object} body - Parsed form body or object containing SAMLResponse
- * @param {string} expectedRequestId - Request ID stored in saml_state cookie
  * @param {object} settings
  * @returns {Promise<object>}
  */
-export async function validateSamlResponse(request, body, expectedRequestId, settings) {
+export async function validateSamlResponse(request, body, settings) {
   if (!settings?.samlCert) {
     throw new Error("IdP X.509 Certificate (samlCert) is missing or not configured");
   }
 
-  const origin = getSamlBaseUrl(request, settings);
+  const origin = getPublicOrigin(request);
   const samlInstance = createSamlInstance(settings, origin);
 
   const container = typeof body === "object" && body !== null ? body : { SAMLResponse: body };
@@ -132,19 +142,14 @@ export async function validateSamlResponse(request, body, expectedRequestId, set
     throw new Error("Missing SAMLResponse parameter in assertion POST body");
   }
 
-  // Parse response XML to inspect InResponseTo for replay protection
-  if (expectedRequestId) {
-    const xml = Buffer.from(rawSamlResponse, "base64").toString("utf8");
-    const match = xml.match(/InResponseTo=["']([^"']+)["']/i);
-    const inResponseTo = match ? match[1] : null;
-
-    if (!inResponseTo || inResponseTo !== expectedRequestId) {
-      throw new Error(`InResponseTo mismatch: expected ${expectedRequestId}, received ${inResponseTo || "none"}`);
-    }
-  }
-
   const result = await samlInstance.validatePostResponseAsync({ SAMLResponse: rawSamlResponse });
   const profile = result?.profile || result;
+
+  const requestId = profile?.inResponseTo;
+  if (!requestId || !(await samlConsumedIds.saveAsync(requestId, true))) {
+    throw new Error("SAML response was already used or does not answer a sign-in request");
+  }
+  await samlRequestCache.removeAsync(requestId);
 
   return profile;
 }

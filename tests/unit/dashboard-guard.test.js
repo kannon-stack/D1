@@ -268,6 +268,65 @@ describe("dashboard guard local-only access", () => {
   });
 });
 
+describe("dashboard guard cross-site writes", () => {
+  function apiRequest(method, headers = {}, pathname = "/api/oauth/kiro/import") {
+    return { ...request(pathname, { host: "router.example.com", ...headers }), method };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.NINEROUTER_PEER_TOKEN = PEER_TOKEN;
+    mocks.validateApiKey.mockResolvedValue(false);
+    mocks.getConsistentMachineId.mockResolvedValue("cli-token");
+    mocks.verifyDashboardAuthToken.mockResolvedValue(false);
+  });
+
+  it("blocks a cross-site POST that is allowed only because requireLogin=false", async () => {
+    mocks.getSettings.mockResolvedValue({ requireLogin: false });
+
+    const response = await proxy(apiRequest("POST", { "sec-fetch-site": "cross-site", origin: "https://evil.example" }));
+
+    expect(response.status).toBe(403);
+  });
+
+  it("allows same-origin, header-less and read-only requests with requireLogin=false", async () => {
+    mocks.getSettings.mockResolvedValue({ requireLogin: false });
+
+    expect(await proxy(apiRequest("POST", { "sec-fetch-site": "same-origin" }))).toBe(mocks.nextResponse);
+    // CLI / curl send no Sec-Fetch-Site; a proxy-rewritten Host must not matter.
+    expect(await proxy(apiRequest("POST", { origin: "https://router.example.com", host: "127.0.0.1:20128" })))
+      .toBe(mocks.nextResponse);
+    expect(await proxy(apiRequest("GET", { "sec-fetch-site": "cross-site" }))).toBe(mocks.nextResponse);
+  });
+
+  it("does not apply when the request has a session or CLI token", async () => {
+    mocks.getSettings.mockResolvedValue({ requireLogin: false });
+    mocks.verifyDashboardAuthToken.mockResolvedValue(true);
+
+    expect(await proxy(apiRequest("POST", { "sec-fetch-site": "cross-site" }))).toBe(mocks.nextResponse);
+
+    mocks.verifyDashboardAuthToken.mockResolvedValue(false);
+    expect(await proxy(apiRequest("POST", { "sec-fetch-site": "cross-site", "x-9r-cli-token": "cli-token" })))
+      .toBe(mocks.nextResponse);
+  });
+
+  it("still returns 401 when login is required", async () => {
+    mocks.getSettings.mockResolvedValue({ requireLogin: true });
+
+    const response = await proxy(apiRequest("POST", { "sec-fetch-site": "cross-site" }));
+
+    expect(response.status).toBe(401);
+  });
+
+  it("no longer exposes /api/settings/require-login publicly", async () => {
+    mocks.getSettings.mockResolvedValue({ requireLogin: true });
+
+    const response = await proxy(apiRequest("GET", {}, "/api/settings/require-login"));
+
+    expect(response.status).toBe(401);
+  });
+});
+
 describe("dashboard guard helpers", () => {
   it("extracts bearer API keys before x-api-key", () => {
     const apiRequest = request("/v1/chat/completions", {
