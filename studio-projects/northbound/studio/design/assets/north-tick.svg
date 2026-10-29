@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 16" width="10" height="16" aria-hidden="true" focusable="false">
+  <!-- Wordmark glyph: a surveyor's north arrow. Half-filled head (left half solid, right half
+       outline), hairline shaft. Sits before NORTHBOUND, cap-height aligned (see layout-spec). -->
+  <path d="M5 0.6L0.9 7.4H5z" fill="currentColor"/>
+  <path d="M5 0.6L9.1 7.4H5" fill="none" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/>
+  <path d="M5 7.4V15.4" stroke="currentColor" stroke-width="1.25"/>
+</svg>

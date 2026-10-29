@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 160" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+<style>.nb-grid{stroke:var(--color-line,#dbd3c8);stroke-width:1;vector-effect:non-scaling-stroke}
+.nb-rule{stroke:var(--color-muted,#645850);stroke-width:1;stroke-dasharray:2 4;vector-effect:non-scaling-stroke}
+.nb-ground{fill:var(--color-ground,#f2e8db)}
+.nb-roast{fill:none;stroke:var(--color-accent,#ae5528);stroke-width:2.25;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.nb-cool{fill:none;stroke:var(--color-lake,#3c7d9a);stroke-width:2;stroke-dasharray:6 5;vector-effect:non-scaling-stroke}</style>
+<path class="nb-roast" d="M0 18l8 27.9 4 12.8 4 11.3 4 10.8 4 9.7 4 8.1 4 6.4 4 5.7 4 5 4 3.9 4 2.9 4 2.6 4 2.3 4 1.9 4 1.2 4 0.5 4-0.1 4-0.1 8-0.6 8-1 8-1.2 4-0.8 8-1.8 8-2 8-2.2 8-2.5 8-2.7 8-2.8 8-3 16-6.3 32-13 12-4.7 8-3.1 8-3 12-4.2 12-3.7 8-2.3 4-1 4-1 8-1.8 28-5.8 20-3.9 20-3.8 20-3.6 20-3.5 20-3.3 24-3.8 24-3.6 24-3.5 24-3.4 24-3.2 20-2.6 16-2 32-3.6 80-8.5"/>
+</svg>
