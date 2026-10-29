@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+/* ── Paste P/studio/design/tokens.css below, unchanged, except change
+      `@theme {` to `@theme static {` so every token variable is emitted. ── */
+
+/* ── end tokens ───────────────────────────────────────────────── */
+
+:root {
+  color-scheme: light dark;
+}
+
+@layer base {
+  html {
+    background: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-text);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-optical-sizing: auto;
+  }
+
+  body {
+    min-height: 100dvh;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    text-wrap: balance;
+  }
+
+  p,
+  li {
+    text-wrap: pretty;
+  }
+
+  ::selection {
+    background: var(--color-accent);
+    color: var(--color-accent-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-focus, var(--color-accent));
+    outline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* Skip link: hidden until focused. */
+.skip-link {
+  position: absolute;
+  left: var(--spacing-gutter, 1rem);
+  top: 0.75rem;
+  z-index: 100;
+  padding: 0.75rem 1rem;
+  background: var(--color-ink);
+  color: var(--color-bg);
+  transform: translateY(-200%);
+}
+.skip-link:focus-visible {
+  transform: none;
+}
+
+/* CSS entrance for the hero/LCP element: runs at first paint, before hydration. */
+@keyframes studio-rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.4em);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.rise {
+  animation: studio-rise 900ms var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)) both;
+  animation-delay: var(--rise-delay, 0ms);
+}

@@ -10,6 +10,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Web-studio bot team and the sites it builds have their own tooling.
+    ".claude/**",
+    "studio-projects/**",
   ]),
 ]);
 

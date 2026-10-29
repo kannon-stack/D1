@@ -80,7 +80,12 @@ open-sse.old/
 graphify-out/*
 
 # Local-only working dirs (notes, vendored repos, scripts, skills)
-.claude/
+# The web-studio bot team (agents, skills, tools) is the tracked exception.
+/.claude/*
+!/.claude/agents/
+!/.claude/skills/
+!/.claude/studio-tools/
+.claude/**/node_modules/
 .docs/
 .repo/
 .script/

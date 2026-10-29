@@ -2,7 +2,7 @@
 
 A team of 5 bots that designs and builds intricate, beautiful webpages.
 
-- **Status:** design only. No agent files have been built yet (see [Build notes](#7-build-notes)).
+- **Status:** built. The bots are in `.claude/agents/`, their skills in `.claude/skills/` and their tools in `.claude/studio-tools/` (see [Implementation](#7-implementation)). Start a project with `/studio <what to build>`.
 - **Runs in:** Claude Code. One orchestrator session plus 4 subagents.
 - **Stack:** Next.js (App Router) + React + TypeScript + Tailwind CSS v4 + Motion (formerly Framer Motion).
 - **Date:** 2026-10-29
@@ -29,7 +29,7 @@ Produce award-level marketing pages, landing pages and small sites. The target i
  Designer  Copywriter  Builder    Critic
 ```
 
-The Creative Director is the main session, not a subagent. Claude Code subagents can't spawn other subagents, so the bot that runs the pipeline has to be the top-level session. The other 4 bots are subagents. They talk to each other only through files in `studio/`, never through chat, so every decision stays inspectable and can be re-run.
+The Creative Director is the main session, not a subagent. It has to interview you and let you pick a direction, and subagents can't ask the user questions (AskUserQuestion isn't available to them). So the bot that runs the pipeline is the top-level session, running the `/studio` skill. The other 4 bots are subagents. They talk to each other only through files in `studio/`, never through chat, so every decision stays inspectable and can be re-run.
 
 ### Taste guardrails (every bot follows these)
 
@@ -66,7 +66,9 @@ Banned, because these make a page look AI-generated:
 
 ## 3. Bot specs
 
-Each spec lists: Mission · Inputs · Responsibilities · Outputs · Tools · Skills · Guardrails · Done when · draft definition.
+Each spec lists: Mission · Inputs · Responsibilities · Outputs · Tools · Skills · Guardrails · Done when · Definition.
+
+Every bot has its own skills, written for this studio and kept in `.claude/skills/`. The `taste-guardrails` skill is preloaded into all of them. Each subagent sets `omitClaudeMd: true`, so the host repo's CLAUDE.md conventions don't leak into site work.
 
 ### 3.1 Creative Director
 
@@ -92,7 +94,7 @@ Each spec lists: Mission · Inputs · Responsibilities · Outputs · Tools · Sk
 
 **Tools:** Agent (dispatch), Read, Write, Edit, AskUserQuestion, TaskCreate / TaskUpdate, WebSearch.
 
-**Skills:** `artifact-design`, `design:design-critique`.
+**Skills:** `studio` (the runbook, invoked as `/studio`) and `taste-guardrails`.
 
 **Guardrails**
 - Never writes page code. It delegates.
@@ -100,14 +102,7 @@ Each spec lists: Mission · Inputs · Responsibilities · Outputs · Tools · Sk
 
 **Done when:** the Critic gate passes (or remaining defects are waived) and every success criterion in `brief.md` is checked.
 
-**Draft definition:** `.claude/skills/studio/SKILL.md`
-```markdown
----
-name: studio
-description: Run the Lean Squad pipeline to design and build a webpage end to end. Use when the user asks for a website, landing page or webpage to be designed and built.
----
-You are the Creative Director. Follow docs/web-studio-bot-team.md §4 exactly…
-```
+**Definition:** `.claude/skills/studio/SKILL.md`, with templates for `brief.md` and `decisions.md`.
 
 ---
 
@@ -149,7 +144,7 @@ You are the Creative Director. Follow docs/web-studio-bot-team.md §4 exactly…
 
 **Tools:** WebSearch, WebFetch, Firecrawl scrape (`screenshot` and `branding` formats), Read (to look at screenshots), Write, Edit, Bash (contrast and screenshot scripts).
 
-**Skills:** `anthropic-skills:canvas-design`, `anthropic-skills:theme-factory`, `design:design-system`, `dataviz` (palette validator), `anthropic-skills:algorithmic-art`.
+**Skills (preloaded):** `taste-guardrails`, `art-direction` (pass A) and `visual-system` (pass B). It also uses the tools `screenshot.mjs`, `contrast.mjs` and `type-scale.mjs`.
 
 **Guardrails**
 - The 3 directions must differ in at least 3 of: type, color, grid, motion, imagery.
@@ -159,16 +154,7 @@ You are the Creative Director. Follow docs/web-studio-bot-team.md §4 exactly…
 
 **Done when:** every section in `layout-spec.md` has a grid, copy slots, a motion reference and assets, and the contrast check passes in both light and dark.
 
-**Draft definition:** `.claude/agents/designer.md`
-```markdown
----
-name: designer
-description: Visual design lead. Use for reference research, the 3 concept directions, and the full visual system (type, OKLCH color tokens, motion language, layout spec) for a webpage.
-tools: Read, Write, Edit, Bash, WebSearch, WebFetch, mcp__Firecrawl__firecrawl_scrape
-model: opus
-skills: anthropic-skills:canvas-design, anthropic-skills:theme-factory, design:design-system, dataviz, anthropic-skills:algorithmic-art
----
-```
+**Definition:** `.claude/agents/designer.md` (Opus, high effort).
 
 ---
 
@@ -195,7 +181,7 @@ skills: anthropic-skills:canvas-design, anthropic-skills:theme-factory, design:d
 
 **Tools:** Read, Write, Edit, WebSearch (competitor language, search intent).
 
-**Skills:** `design:ux-copy`, `marketing:content-creation`, `brand-voice:enforce-voice`, `searchfit-seo:on-page-seo`, `searchfit-seo:schema-markup`.
+**Skills (preloaded):** `taste-guardrails` and `page-copy`.
 
 **Guardrails**
 - No lorem ipsum and no placeholders.
@@ -204,16 +190,7 @@ skills: anthropic-skills:canvas-design, anthropic-skills:theme-factory, design:d
 
 **Done when:** every slot in `layout-spec.md` has copy within its length budget and `metadata.md` is complete.
 
-**Draft definition:** `.claude/agents/copywriter.md`
-```markdown
----
-name: copywriter
-description: Writes all page copy, microcopy, alt text and SEO metadata from the brief and the section outline. Use whenever a webpage needs words.
-tools: Read, Write, Edit, WebSearch
-model: sonnet
-skills: design:ux-copy, marketing:content-creation, brand-voice:enforce-voice, searchfit-seo:on-page-seo, searchfit-seo:schema-markup
----
-```
+**Definition:** `.claude/agents/copywriter.md` (Sonnet).
 
 ---
 
@@ -249,7 +226,7 @@ skills: design:ux-copy, marketing:content-creation, brand-voice:enforce-voice, s
 
 **Tools:** Bash, Read, Write, Edit, Glob, Grep.
 
-**Skills:** `anthropic-skills:web-artifacts-builder`, `run`, `simplify`.
+**Skills (preloaded):** `taste-guardrails` and `nextjs-craft` (with templates for `globals.css`, `motion.ts`, `Reveal` and `SplitLines`). It also uses the tools `serve.mjs` and `screenshot.mjs`.
 
 **Guardrails**
 - Implements the spec; it doesn't redesign. Any deviation goes through the Director and is logged in `decisions.md`.
@@ -259,16 +236,7 @@ skills: design:ux-copy, marketing:content-creation, brand-voice:enforce-voice, s
 
 **Done when:** `next build` is clean, every section in `layout-spec.md` is implemented, and the self-check screenshot matches.
 
-**Draft definition:** `.claude/agents/builder.md`
-```markdown
----
-name: builder
-description: Implements the design and copy spec as a Next.js App Router + Tailwind v4 + Motion site, including motion and micro-interactions. Use to build or fix site/.
-tools: Read, Write, Edit, Bash, Glob, Grep
-model: opus
-skills: anthropic-skills:web-artifacts-builder, run, simplify
----
-```
+**Definition:** `.claude/agents/builder.md` (Opus, high effort).
 
 ---
 
@@ -292,9 +260,9 @@ skills: anthropic-skills:web-artifacts-builder, run, simplify
 5. **Review the code:** grep for colors or sizes hard-coded outside the tokens, animations missing reduced-motion guards, `"use client"` at the page root, and unused dependencies.
 6. **Report** in `qa/round-N.md`: the score table, pass/fail on the gate, and a defect list. Each defect has an ID, a severity (blocker / major / minor), an owner bot, an evidence path, expected vs. actual, and a suggested fix.
 
-**Tools:** Bash, Read, Write, Glob, Grep. Its tool list deliberately excludes Edit, and it never modifies `site/`.
+**Tools:** Bash, Read, Write, Glob, Grep. Edit is disallowed, and a `PreToolUse` hook (`critic-write-guard.mjs`) blocks any Write outside `*/studio/qa/`.
 
-**Skills:** `design:design-critique`, `design:accessibility-review`, `code-review`, `run`.
+**Skills (preloaded):** `taste-guardrails` and `visual-qa`. It also uses the tools `serve.mjs`, `screenshot.mjs` and `audit.mjs`. Lighthouse reports the median of 3 runs, because single runs are noisy.
 
 **Guardrails**
 - Reports only, never fixes. Its judgment stays independent of the code it reviews.
@@ -302,16 +270,7 @@ skills: anthropic-skills:web-artifacts-builder, run, simplify
 
 **Done when:** the report is written and clearly states PASS or FAIL.
 
-**Draft definition:** `.claude/agents/critic.md`
-```markdown
----
-name: critic
-description: Independent QA and design critique. Screenshots the site at 4 breakpoints in light and dark, scores the beauty rubric, runs axe and Lighthouse, and files owner-tagged defects. Never edits site code.
-tools: Read, Write, Bash, Glob, Grep
-model: opus
-skills: design:design-critique, design:accessibility-review, code-review, run
----
-```
+**Definition:** `.claude/agents/critic.md` (Opus, high effort).
 
 ---
 
@@ -443,33 +402,46 @@ Each criterion is scored 1–10, and every score cites a screenshot.
 
 ---
 
-## 7. Build notes
+## 7. Implementation
 
-These are for when you turn this doc into a working team.
+### Files
+```
+.claude/
+├── agents/                   the 4 subagents (frontmatter: tools, model, effort, preloaded skills)
+│   ├── designer.md
+│   ├── copywriter.md
+│   ├── builder.md
+│   └── critic.md             + PreToolUse hook: writes only under */studio/qa/
+├── skills/
+│   ├── studio/               /studio: the Creative Director runbook + brief/decisions templates
+│   ├── taste-guardrails/     shared quality bar, preloaded into every bot
+│   ├── art-direction/        Designer pass A + directions template
+│   ├── visual-system/        Designer pass B + direction/type/tokens/motion/layout-spec templates
+│   ├── page-copy/            Copywriter + voice/copy/metadata templates
+│   ├── nextjs-craft/         Builder + globals.css, motion.ts, Reveal, SplitLines templates
+│   └── visual-qa/            Critic + round-report template
+└── studio-tools/             scripts the bots run (see its README)
+    ├── scripts/              doctor, serve, screenshot, audit, contrast, type-scale
+    └── hooks/                critic-write-guard
+studio-projects/<slug>/       one folder per site: studio/ handoff files + site/ Next.js app
+```
 
-**Files to create.** Put them in the project where sites get built, or in `~/.claude/` to use the team everywhere.
-- `.claude/skills/studio/SKILL.md`: the Creative Director and the pipeline in §4.
-- `.claude/agents/designer.md`, `copywriter.md`, `builder.md`, `critic.md`: the draft definitions in §3, each with its full spec as the body.
-- `.claude/skills/studio/scripts/`:
-  - `screenshot.mjs`: Playwright, 4 breakpoints × light/dark, full-page and fold shots, a scroll-frame sequence, hover and focus captures.
-  - `contrast.mjs`: OKLCH → sRGB conversion, WCAG ratio and APCA Lc checks for every token pair; exits non-zero on failure.
-  - `audit.mjs`: `@axe-core/playwright` and a Lighthouse run against the local server, writing JSON and HTML into `qa/round-N/`.
+### Running it
+1. In a Claude Code session started at the repo root, type `/studio landing page for <brand or idea>`.
+2. On first use, the Director runs `node .claude/studio-tools/scripts/doctor.mjs --install`. It needs Node 22.19 or newer, plus Playwright and Chromium.
+3. You answer the intake questions, pick a direction and a hero headline, and then the bots build and critique until the page passes the gate.
 
-**Implementation details**
-- Check the exact frontmatter fields (`tools`, `model`, `skills`) and skill names against the current Claude Code docs when you build. Some of them change between releases.
-- MCP tools go in a subagent's `tools` list by their full name, for example `mcp__Firecrawl__firecrawl_scrape`.
-- The Critic's "never edit `site/`" rule lives in its prompt. To enforce it hard, add a `PreToolUse` hook that blocks Write calls under `site/` while the Critic is running.
-
-**Cost and speed**
-- The Designer, Builder and Critic do most of the work and run on Opus.
-- The Copywriter runs on Sonnet.
-- The 3-round cap on the critique loop keeps a run bounded.
+### Notes
+- **Bots not showing up?** Claude Code only loads agents from `.claude/agents/` if that folder existed when the session started. If it didn't, start a new session. The `/studio` skill also includes a fallback that runs each bot as a general-purpose agent reading its definition file.
+- **Repo wiring:** the repo's `.gitignore` keeps the rest of `.claude/` local, so only `agents/`, `skills/` and `studio-tools/` are tracked. Root ESLint and Docker ignore `.claude/` and `studio-projects/`.
+- **Raw evidence isn't committed:** each round's screenshots and audit files (`studio/qa/round-N/`) are regenerated, so they're ignored. The `round-N.md` reports that cite them are kept.
+- **Cost and speed:** the Designer, Builder and Critic run on Opus at high effort, and the Copywriter on Sonnet. The 3-round cap on the critique loop keeps a run bounded.
 
 ---
 
 ## Appendix A: the full 25-bot menu
 
-Every specialist role considered while designing the team. The last column shows which Lean Squad bot covers it today.
+Every specialist role considered while designing the team. The last column shows which Lean Squad bot covers it today. The skills listed here are marketplace skills a dedicated bot could use; the built Lean Squad uses its own skills instead (see §3).
 
 ### Strategy and direction
 | Bot | Role | Tools | Skills | Lean bot |

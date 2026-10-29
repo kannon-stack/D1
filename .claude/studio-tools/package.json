@@ -1,0 +1,18 @@
+{
+  "name": "web-studio-tools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Screenshot, contrast, accessibility and Lighthouse tools used by the web-studio bots.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.19"
+  },
+  "scripts": {
+    "doctor": "node scripts/doctor.mjs"
+  },
+  "dependencies": {
+    "axe-core": "4.14.0",
+    "chrome-launcher": "1.2.2",
+    "lighthouse": "13.5.0"
+  }
+}

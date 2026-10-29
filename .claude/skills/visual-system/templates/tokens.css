@@ -1,0 +1,59 @@
+/*
+ * Design tokens: <Brand> · direction "<Name>"
+ * The Builder pastes this file into src/app/globals.css directly after
+ * `@import "tailwindcss";`
+ * Verify with: node .claude/studio-tools/scripts/contrast.mjs <this file>
+ */
+
+@theme {
+  /* ── Color: light (OKLCH) ─────────────────────────────── */
+  --color-bg: oklch(0.98 0.008 85);
+  --color-surface: oklch(0.955 0.012 85);
+  --color-ink: oklch(0.21 0.012 60);
+  --color-muted: oklch(0.47 0.012 60);
+  --color-accent: oklch(0.55 0.16 40);
+  --color-accent-ink: oklch(0.99 0.01 85);
+  --color-line: oklch(0.86 0.01 80);
+  --color-focus: var(--color-accent);
+  /* contrast: accent/surface 3 */
+
+  /* ── Type scale (paste type-scale.mjs output here) ────── */
+  --text-base: clamp(1rem, 0.9583rem + 0.1852vw, 1.125rem);
+  --text-base--line-height: 1.6;
+
+  /* ── Space & layout ──────────────────────────────────── */
+  --spacing: 0.25rem;
+  --spacing-gutter: clamp(1.25rem, 3vw, 2.5rem);
+  --spacing-section-sm: clamp(4rem, 8vw, 6rem);
+  --spacing-section-md: clamp(6rem, 12vw, 10rem);
+  --spacing-section-lg: clamp(8rem, 18vw, 16rem);
+  --container-page: 90rem;
+  --container-prose: 40rem;
+
+  /* ── Shape & depth (only if the direction uses them) ─── */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+
+  /* ── Easing ──────────────────────────────────────────── */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-quart: cubic-bezier(0.76, 0, 0.24, 1);
+}
+
+/* Fonts come from next/font CSS variables set on <html>, so `inline` is required. */
+@theme inline {
+  --font-display: var(--font-display-face), Georgia, serif;
+  --font-text: var(--font-text-face), system-ui, sans-serif;
+}
+
+/* ── Color: dark. Designed, not inverted ────────────────── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: oklch(0.17 0.01 60);
+    --color-surface: oklch(0.21 0.012 60);
+    --color-ink: oklch(0.94 0.01 85);
+    --color-muted: oklch(0.72 0.012 80);
+    --color-accent: oklch(0.7 0.15 45);
+    --color-accent-ink: oklch(0.17 0.01 60);
+    --color-line: oklch(0.32 0.01 60);
+  }
+}

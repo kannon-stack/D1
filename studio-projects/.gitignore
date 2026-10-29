@@ -1,0 +1,9 @@
+# Raw screenshots and audit evidence are regenerated every round; the
+# round-N.md reports that cite them are kept.
+*/studio/qa/round-*/
+*/studio/qa/builder-check/
+
+# Site build output (create-next-app also writes its own .gitignore)
+*/site/node_modules/
+*/site/.next/
+*/site/next-env.d.ts

@@ -30,3 +30,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+
+# Web-studio bot team and its generated sites (not part of the 9Router image)
+.claude
+studio-projects
