@@ -96,7 +96,7 @@ Mobile (375):
   - `hero.route_card.link` → `#roast-curve` (`text-sm` 500, underline, `↓`), margin-top 12.
 - **Section-line labels** (inside the terrain box, `aria-hidden`, positioned from `contours-data.json → hero`):
   - `A` at `sectionLine.A` and `A′` at `sectionLine.A2`: `text-sm` wide 600 ink, `translate: -50% calc(-100% - 10px)`.
-  - Spot heights from `hero.spots` (`88°`, `152°`, `196°`, `▲ 207°`): `text-xs` map 500 `num` ink, `translate: -50% calc(-100% - 6px)`, background `--color-bg` with 1 × 4 px padding. This map-label knockout keeps lines from crossing the numerals.
+  - Spot heights: a **data overlay, not copy**. Values and positions come from `contours-data.json → hero.spots` (`88°`, `152°`, `196°`, `▲ 207°`); there is no copy slot for them. Style: `text-xs` map 500 `num` ink, `translate: -50% calc(-100% - 6px)`, background `--color-bg` with 1 × 4 px padding. This map-label knockout keeps lines from crossing the numerals.
 - **Legend** (a `p` at bottom-right, `right: <container edge>; bottom: 24px`): a surface label with a 1 px `--color-line` border, padding 8 × 12, right-aligned, eyebrow style (map 600 caps, muted). Line 1 is `hero.eyebrow` (the sheet's place name). Line 2 is `hero.legend` (contour interval · height = bean temperature · section A–A′, with an aria-hidden `↓`).
 
 | Element | Columns (sm / md / lg / xl) | Type token | Color | Asset | Motion | States |
@@ -117,7 +117,7 @@ Mobile (375):
 - `hero.subhead` **110** ✓ (109) · `hero.cta` **22** ✓ · `hero.secondary_cta` **20** ✓ · `hero.reassurance` **70** ✓ (63)
 - `hero.route_card.label` **16** ✓ · `.batch` **10** ✓ · `.origin` **18** ✓ · `.roasted` **22** ✓ · `.drop` **22** ✓ · `.dtr` **10** ✓ · `.link` **18** ✓
 - `hero.eyebrow` **44** ✓ (42; placed as line 1 of the legend)
-- `hero.legend` **52** ⚠. This is a new slot and needs copy. Suggested: "Contour interval 4 °C · Height = bean temperature · Section A–A′".
+- `hero.legend` **52** (new slot; the Copywriter is adding "Contour interval 4 °C · Height = bean temperature · Section A–A′").
 - `hero.image_alt` **125** ✓
 - `hero.cta_loading` is not used: the hero CTA is an anchor link.
 
@@ -337,7 +337,6 @@ Mobile (375):
 - `roasts.scale_label` **14** · `roasts.scale_min` / `scale_max` **8** · `roasts.scale_note` **60**. The note shows under the scale in the sm/md plate, and at lg it's the `aria-describedby` of each card's scale.
 - `roasts.items[].batch` **10** · `.name` **12** · `.country` **12** · `.latitude` **8** · `.elevation` **14** · `.producer` **32** · `.process` **12** · `.roast_level` **14** · `.first_crack` **16** · `.notes[]` **16** each · `.roasted` **12** · `.brew` **36** · `.bag` **16** · `.mini_alt` **125** (`.drop`, `.drop_time` and `.dtr` are data)
 - `roasts.price_note` **90** · `roasts.cta` **22**
-- `roasts.browse_all` ⚠ **not placed**: a single static page has no archive to link to. I recommend dropping it.
 
 **Mobile / md changes:**
 - A **comparison plate** comes first: a surface box with a 1 px line and 16 px padding, holding a 12rem chart with the three minis overlaid on the same domain.
@@ -677,9 +676,7 @@ Roasts · The curve · How it works · Plans
 
 ## Reconciliation notes for the Director (⚠ items)
 1. **`hero.headline`:** the words are unchanged; only the breaks differ. "Every roast / is a *climb.*" is the h1 display, and "We send you the map." is the coda inside the same h1. The copy's 14-character first line can't fit the wide display cut at lg.
-2. **`hero.legend`:** a new 52-character slot that needs one line of copy. Suggested: "Contour interval 4 °C · Height = bean temperature · Section A–A′".
-3. **`roasts.browse_all`:** not placed, because a static one-pager has no archive to link to. I recommend removing it from the copy.
-4. **Demo data to log** (designer-invented and used by `contours.mjs`):
+2. **Demo data to log** (designer-invented and used by `contours.mjs`):
    - Batch 214's CHARGE probe reading of **200 °C**. It's drawn but not labelled, since the copy leaves the charge temperature blank.
    - Tray cooling to 12:00, drawn illustratively (τ = 110 s, no numbers shown).
    - CHARGE / TP / DE for batch 212: 198 °C, 1:02 / 87 °C, 4:25 / 151 °C.

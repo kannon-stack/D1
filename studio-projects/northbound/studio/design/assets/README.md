@@ -35,8 +35,8 @@ Running it twice produces byte-identical files (seeded PRNG, fixed rounding). Re
 | Batch 214 events (t s / BT °C) | CHARGE 0 / **200** · TP 65 / 88 · DE 270 / 152 · FC 530 / 196 · DROP 640 / 207 | `decisions.md` #4. **CHARGE 200 °C is new** (probe reading at charge; proposed demo value, needs a log entry) |
 | Curve between events | Monotone cubic (Fritsch–Carlson) through the events; the CHARGE→TP fall is shaped by 3 fixed knots (`FALL_SHAPE`) so the probe-recovery dip looks real. Resulting RoR peaks ≈ 25 °C/min at 3:00 and declines to ≈ 6 °C/min at DROP | script |
 | Cooling (DROP → 12:00) | `T = 30 + (Tdrop − 30)·e^(−(t − tdrop)/110)`; ends at 115.5 °C at 12:00. Drawn dashed in `--color-lake`, never labelled with a number | script (illustrative) |
-| Batch 212 (proposed) | Nyeri, Kenya: 0/198 · 62/87 · 265/151 · 520/194 · 610/203 → DTR 14.8 %, light | **proposed demo**, align with Copywriter |
-| Batch 213 (proposed) | Huila, Colombia: 0/202 · 68/89 · 280/153 · 545/197 · 680/212 → DTR 19.9 %, medium | **proposed demo**, align with Copywriter |
+| Batch 212 (proposed) | Nyeri, Kenya: 0/198 · 62/87 · 265/151 · 520/194 · 610/203 → DTR 14.8 %, light | FC/drop/DTR match copy (`decisions.md` #8); CHARGE/TP/DE are designer demo data |
+| Batch 213 (proposed) | Huila, Colombia: 0/202 · 68/89 · 280/153 · 545/197 · 680/212 → DTR 19.9 %, medium | FC/drop/DTR match copy (`decisions.md` #8); CHARGE/TP/DE are designer demo data |
 
 ## Parameters
 
