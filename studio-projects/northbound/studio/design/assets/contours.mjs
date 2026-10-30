@@ -40,12 +40,13 @@ const BATCH_214 = {
   ],
 };
 
-// The three current roasts (mini profiles share one axis). Batch 214 is logged;
-// 212 and 213 are PROPOSED demo values — edit here and re-run if copy differs.
+// The three current roasts, in page order: light to dark (decisions.md #9). Mini profiles
+// share one axis. Batch 214 is logged in #4; 212 and 213 match the copy logged in #8
+// (FC and drop times/temps, DTR). Their CHARGE/TP/DE values are designer demo data.
 const ROASTS = [
   { batch: 212, origin: "Nyeri, Kenya", events: [[0, 198], [62, 87], [265, 151], [520, 194], [610, 203]] },
-  { batch: 213, origin: "Huila, Colombia", events: [[0, 202], [68, 89], [280, 153], [545, 197], [680, 212]] },
   { batch: 214, origin: "Guji, Ethiopia", events: BATCH_214.events.map((e) => [e.t, e.T]) },
+  { batch: 213, origin: "Huila, Colombia", events: [[0, 202], [68, 89], [280, 153], [545, 197], [680, 212]] },
 ];
 
 // Shape knots between CHARGE and TP (probe recovery after the beans drop in).
@@ -64,9 +65,9 @@ const COOL = { ambient: 30, tau: 110 }; // cooling: T = ambient + (Tdrop − amb
 // Hero map geometry (viewBox units).
 const W = 1600;
 const H = 1000;
-const A = [96, 870]; // section start (CHARGE)
-const A2 = [1270, 700]; // section end A′ (12:00); DROP lands at (1140, 719) = 71% / 72%
-const SIGMA = 56; // half-width of the ridge that carries the curve
+const A = [96, 900]; // section start (CHARGE)
+const A2 = [1270, 735]; // section end A′ (12:00); DROP lands at (1140, 753) = 71% / 75%
+const SIGMA = 50; // half-width of the ridge that carries the curve
 const WARP = 34; // seconds of domain warp off the line (0 on the line)
 const SEED = 214;
 const GRID = 6; // marching-squares cell size (units)
@@ -74,13 +75,13 @@ const LEVEL_MIN = 64;
 const LEVEL_MAX = 204;
 const LEVEL_STEP = 4; // °C between contours
 const INDEX_STEP = 20; // every 5th line is an index line, labelled
-const CLEARING = { cx: 470, cy: 400, rx: 520, ry: 300, floor: 66 }; // headline clearing
+const CLEARING = { cx: 520, cy: 430, rx: 580, ry: 290, n: 4, floor: 66 }; // headline clearing (superellipse)
 
 // Background landscape (°C-equivalent heights). Gaussian hills: [x, y, radius, height].
 const BASE = 70;
 const BASE_NOISE = 15;
 const HILLS = [
-  [1000, 735, 170, 120], // summit massif: DROP sits on its east shoulder, so the summit is a true peak
+  [1000, 770, 170, 120], // summit massif: DROP sits on its east shoulder, so the summit is a true peak
   [1520, 170, 220, 74], // north-east spur (behind the route card)
   [870, 70, 210, 46], // north ridge
   [360, 1000, 170, 22], // south-west knoll
@@ -198,11 +199,15 @@ const NX = UY;
 const NY = -UX;
 const lineAt = (t) => [A[0] + (AX * t) / T_END, A[1] + (AY * t) / T_END];
 
+// superellipse "radius": < 1 inside the clearing, 1 on its edge
+const clearingDist = (x, y) =>
+  (Math.abs((x - CLEARING.cx) / CLEARING.rx) ** CLEARING.n + Math.abs((y - CLEARING.cy) / CLEARING.ry) ** CLEARING.n) ** (1 / CLEARING.n);
+
 function background(x, y) {
   let f = BASE + BASE_NOISE * fbm(x / 260, y / 260);
   for (const [hx, hy, r, h] of HILLS) f += h * Math.exp(-((x - hx) ** 2 + (y - hy) ** 2) / (2 * r * r));
   // the clearing: flatten to a meadow that sits between two contour levels
-  const e = Math.hypot((x - CLEARING.cx) / CLEARING.rx, (y - CLEARING.cy) / CLEARING.ry);
+  const e = clearingDist(x, y);
   const c = e < 1 ? 1 : e > 1.35 ? 0 : 1 - smooth((e - 1) / 0.35);
   return f + (CLEARING.floor - f) * c;
 }
@@ -400,7 +405,7 @@ const field = sampleGrid(nx, ny, (i, j) => height(i * GRID, j * GRID));
 
 // Zones where index labels may not sit: the clearing, the route card, the section line.
 const LABEL_KEEP_OUT = [
-  (x, y) => Math.hypot((x - CLEARING.cx) / (CLEARING.rx * 1.12), (y - CLEARING.cy) / (CLEARING.ry * 1.12)) < 1,
+  (x, y) => clearingDist(x, y) < 1.12,
   (x, y) => x > 1110 && y < 520, // route card (cols 10–12, upper half)
   (x, y) => x < 70 || x > W - 70 || y < 120 || y > H - 50, // edges and nav band
 ];

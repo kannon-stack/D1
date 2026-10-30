@@ -89,7 +89,7 @@
   /* ── Space & layout ───────────────────────────────────── */
   --spacing: 0.25rem;
   --spacing-gutter: clamp(1rem, 0.6667rem + 1.4815vw, 1.5rem); /* 16 → 24px */
-  --spacing-margin: clamp(1rem, -0.0rem + 4.4444vw, 4rem); /* page side margin: 16 → 64px */
+  --spacing-margin: clamp(1rem, 4.4444vw, 4rem); /* page side margin: 16 → 64px */
   --spacing-section-xs: clamp(3rem, 2.3333rem + 2.963vw, 5rem); /* 48 → 80: inside the data run */
   --spacing-section-sm: clamp(4.5rem, 3.5rem + 4.4444vw, 7.5rem); /* 72 → 120 */
   --spacing-section-md: clamp(6rem, 4.6667rem + 5.9259vw, 10rem); /* 96 → 160 */
@@ -108,7 +108,11 @@
   --ease-plot: cubic-bezier(0.45, 0, 0.55, 1); /* pen-plotter: even, symmetric, unhurried */
   --ease-pin: cubic-bezier(0.22, 0.7, 0.2, 1); /* waypoint pins settling, no overshoot */
 
-  /* ── Durations (also in motion.md) ────────────────────── */
+}
+
+/* ── Durations (motion.md). Not a Tailwind namespace, so plain custom properties:
+   use as `duration-(--duration-base)` or in Motion via getComputedStyle. ── */
+:root {
   --duration-instant: 120ms;
   --duration-fast: 200ms;
   --duration-base: 450ms;
@@ -117,11 +121,29 @@
 }
 
 /* Fonts come from next/font CSS variables set on <html>, so `inline` is required.
-   One family (Archivo); the italic is a second next/font instance of the same family. */
+   One family (Archivo, normal + italic in one next/font call). Display and text are the
+   same family; the WIDTH axis carries the hierarchy (utilities below). */
 @theme inline {
   --font-display: var(--font-archivo), "Archivo", ui-sans-serif, "Helvetica Neue", Arial, sans-serif;
   --font-text: var(--font-archivo), "Archivo", ui-sans-serif, "Helvetica Neue", Arial, sans-serif;
-  --font-italic: var(--font-archivo-italic), var(--font-archivo), "Archivo", ui-sans-serif, sans-serif;
+}
+
+/* ── Width axis: the survey-sheet hierarchy (see type.md) ──
+   font-stretch drives the wdth axis; font-weight still drives wght. */
+@utility width-wide {
+  font-stretch: 125%; /* display: headlines, wordmark, plan prices */
+}
+@utility width-semi {
+  font-stretch: 112%; /* the proof quote, card names on mobile */
+}
+@utility width-text {
+  font-stretch: 100%; /* body, UI */
+}
+@utility width-map {
+  font-stretch: 75%; /* map lettering: labels, eyebrows, data, spot heights */
+}
+@utility num {
+  font-variant-numeric: tabular-nums; /* every time, temperature, date, price */
 }
 
 /* ── Color: dark, "night survey". Designed, not inverted ──

@@ -10,13 +10,13 @@
   "sectionLine": {
    "A": {
     "left": 6,
-    "top": 87
+    "top": 90
    },
    "A2": {
     "left": 79.4,
-    "top": 70
+    "top": 73.5
    },
-   "angleDeg": -8.2
+   "angleDeg": -8
   },
   "spots": [
    {
@@ -24,42 +24,42 @@
     "t": 65,
     "T": 88,
     "left": 12.6,
-    "top": 85.5
+    "top": 88.5
    },
    {
     "code": "DE",
     "t": 270,
     "T": 152,
     "left": 33.5,
-    "top": 80.6
+    "top": 83.8
    },
    {
     "code": "FC",
     "t": 530,
     "T": 196,
     "left": 60,
-    "top": 74.5
+    "top": 77.9
    },
    {
     "code": "DROP",
     "t": 640,
     "T": 207,
     "left": 71.2,
-    "top": 71.9
+    "top": 75.3
    }
   ],
   "clearing": {
-   "left": 29.4,
-   "top": 40,
-   "rx": 32.5,
-   "ry": 30
+   "left": 32.5,
+   "top": 43,
+   "rx": 36.3,
+   "ry": 29
   },
-  "indexLabels": 6
+  "indexLabels": 5
  },
  "strip": {
   "viewBox": [
    720,
-   72.8
+   72.9
   ],
   "crossings": [
    {
@@ -1362,22 +1362,6 @@
    "dtr": 14.8
   },
   {
-   "batch": 213,
-   "origin": "Huila, Colombia",
-   "file": "mini-213.svg",
-   "drop": {
-    "t": 680,
-    "T": 212,
-    "left": 94.4,
-    "top": 5
-   },
-   "fc": {
-    "t": 545,
-    "T": 197
-   },
-   "dtr": 19.9
-  },
-  {
    "batch": 214,
    "origin": "Guji, Ethiopia",
    "file": "mini-214.svg",
@@ -1392,6 +1376,22 @@
     "T": 196
    },
    "dtr": 17.2
+  },
+  {
+   "batch": 213,
+   "origin": "Huila, Colombia",
+   "file": "mini-213.svg",
+   "drop": {
+    "t": 680,
+    "T": 212,
+    "left": 94.4,
+    "top": 5
+   },
+   "fc": {
+    "t": 545,
+    "T": 197
+   },
+   "dtr": 19.9
   }
  ]
 }
