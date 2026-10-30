@@ -24,17 +24,18 @@ headline_options:
   - text: "Every roast\nis a *climb.*\nWe send you the map."   # lines 11 / 11 / 20 (markers not counted)
     rationale: "Names the concept in one breath, then pays it off with what arrives in the box. The terrain behind the type is the map, so the line and the picture say the same thing inside 5 seconds. The one italic word gives it warmth."
     recommended: true
+    final: true
   - text: "Roasted\nTuesday.\nAt your door *Friday.*"   # lines 7 / 8 / 20 (markers not counted)
     rationale: "The most specific line of the three. It answers the reason people cancel (stale coffee) with two weekdays. It leaves the curve for the subhead, so the map concept takes longer than 5 seconds to land. 'By' is dropped from the earlier draft to fit the 20-character coda."
   - text: "Fresh is\na claim.\nA curve is *proof.*"   # lines 8 / 8 / 17 (markers not counted)
     rationale: "Speaks straight to a reader who distrusts vague quality claims and puts the differentiator in the headline. Colder and less outdoorsy than A, and it takes a small dig at the category, so the warmth has to come from the subhead. 'Roast' moves to the subhead to fit the coda."
-headline: "Every roast\nis a *climb.*\nWe send you the map."   # provisional = option A; lines 1 and 2 are the display, line 3 is the coda. The Director confirms, then this is final and option A gets final: true
+headline: "Every roast\nis a *climb.*\nWe send you the map."   # final = option A (chosen by the Director); lines 1 and 2 are the display, line 3 is the coda. The Director confirms, then this is final and option A gets final: true
 subhead: "Every bag ships with its real roast curve and roast date, so you can read how it was made before you brew it."   # 109/110
 cta: "Start a subscription"   # 20/22
 cta_loading: "Starting…"   # 9/22 (not used: the hero CTA is an anchor link)
 secondary_cta: "See current roasts"   # 18/20
 reassurance: "Roasted Tuesday, at your door by Friday. Pause or skip anytime."   # 63/70
-legend: "Contour interval 4 °C · Height = bean temperature"   # 49/52 (line 2 of the map legend)
+legend: "Interval 4 °C · Height = bean temperature · A–A′"   # 48/52 (line 2 of the map legend)
 route_card:
   label: "Current batch"   # 13/16
   batch: "Batch 214"   # 9/10
