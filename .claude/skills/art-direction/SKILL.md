@@ -25,6 +25,8 @@ Look for **techniques, not looks**. You are studying how good sites solve proble
    - or `mcp__Firecrawl__firecrawl_scrape` with `formats: ["screenshot"]`, then `curl -sL "<screenshot url>" -o P/studio/research/<name>.png`
 3. **Read every screenshot.** Don't describe a site you haven't looked at.
 
+`screenshot.mjs` can't reach many third-party sites from a cloud container, because the egress proxy denies hosts it hasn't allowed. In that case Firecrawl is the expected route, not a last resort. Keep the captures only as working material: the project's `.gitignore` leaves `studio/research/*.png` out of the repo, so `references.md` must carry everything that matters (URL, technique, what to avoid).
+
 If a capture fails, note it and move on; never invent what a site looks like.
 
 **Write `references.md`.** One entry per reference:

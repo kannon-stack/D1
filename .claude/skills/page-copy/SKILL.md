@@ -42,6 +42,9 @@ Words make the design make sense. Every heading must earn its size: if a headlin
 ## Banned words and phrases
 revolutionary, seamless(ly), unlock, elevate, leverage, cutting-edge, game-changer, next-level, world-class, best-in-class, innovative, empower, synergy, robust, journey (as a metaphor), "in today's fast-paced world", "look no further", "we're passionate about", "solutions" (used alone), and any exclamation mark in a headline.
 
+## You have no shell
+You can't run a parser, so write the YAML and JSON carefully: quote any string containing `:` or `#`, keep indentation consistent, and re-read each block once before you finish. The Director runs `node .claude/studio-tools/scripts/check-content.mjs` on your files. It reports YAML and JSON-LD syntax errors, slots the layout spec uses that have no copy, banned words, and counts in your `# used/budget` comments that don't match the text. Make those counts exact.
+
 ## Done when
 - [ ] Every slot in `layout-spec.md` has copy within its budget (with counts shown).
 - [ ] The hero has 3 options with rationales, one of them recommended.

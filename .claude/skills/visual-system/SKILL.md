@@ -72,6 +72,7 @@ Body text must reach at least 4.5:1, and large text or UI elements at least 3:1,
   - **copy slots**
 - **Copy slots** are the contract with the Copywriter. Name each slot `section.slot` (e.g. `hero.headline`) and give its budget as `max chars per line × lines` (e.g. `22 × 2`) for display text, or as a max character count for body text.
 - The 375px design is composed, not just stacked: say what changes.
+- **Only real copy is a slot.** Values that come from data (spot heights or event times read from `contours-data.json`, computed dates, prices pulled from the plan) are data overlays: describe them, but don't give them a `section.slot` name or a budget. The Director's `check-content.mjs` treats every `section.slot` you write as copy the Copywriter owes you, and reports an error if one doesn't exist.
 
 ## 6. `assets/`: the visual material
 - **Prefer hand-authored SVG, CSS or generative art over stock photography.** Draw SVGs with a `viewBox` and `currentColor` (or CSS variables) so they follow the theme. Mark decorative ones `aria-hidden="true"`.

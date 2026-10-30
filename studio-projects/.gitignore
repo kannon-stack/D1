@@ -7,3 +7,8 @@
 */site/node_modules/
 */site/.next/
 */site/next-env.d.ts
+
+# Reference screenshots are third-party site captures: working material only.
+# research/references.md carries the URLs and the techniques worth borrowing.
+*/studio/research/*.png
+*/studio/research/**/*.png

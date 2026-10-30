@@ -74,7 +74,7 @@ Send **both** dispatches in one message so they run at the same time.
 > Project `P`. Read `brief.md`, `directions.md` (the section outline) and `decisions.md`; the chosen direction is "<name>". Following the `page-copy` skill, write `voice.md`, `copy.md` and `metadata.md` in `P/studio/content/`, with 3 hero headline options. `layout-spec.md` may land while you work. When it does, fit every slot to its length budget.
 
 When both return:
-1. Check that every `layout-spec.md` slot has copy within its budget. If not, send the mismatches back to whichever bot owns the fix.
+1. Run `node .claude/studio-tools/scripts/check-content.mjs P`. It parses the Copywriter's YAML and JSON-LD (the Copywriter has no shell, so nobody else does), checks that every slot the layout spec references has copy, flags banned words, and checks the `# used/budget` counts. Send each error to the bot that owns the file: a missing slot to the Copywriter, or to the Designer if the "slot" is really a data overlay. Then check by reading that every slot fits its budget in `layout-spec.md` (those budgets aren't machine-checked), and send mismatches to whoever owns the fix. Repeat until the check shows no errors.
 2. Ask the user to pick the hero headline (AskUserQuestion, 3 options, rationale as each description), or pick it yourself if they delegated.
 3. Write the pick to `decisions.md`, and tell the Copywriter to mark it final in `copy.md` (or do that one-line edit yourself).
 
