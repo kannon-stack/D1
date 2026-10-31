@@ -13,7 +13,7 @@ Agkbuilds builds custom software for clients and needs a one-page website that t
 Businesses that might hire Agkbuilds. Assumed (see decisions #2): owners and managers deciding whether to hire a custom-software builder, who aren't necessarily technical but will judge quality by how the page itself looks and reads. They have seen many look-alike software-company sites and distrust vague claims.
 
 ## Primary action
-**Contact Agkbuilds / book a call.** The contact method (an email address or a booking link) is **pending from the user**; the Builder can't wire the button until it is supplied. No secondary action.
+**Contact Agkbuilds / book a call.** Supplied by the user: email **agkbuilds@gmail.com** and phone **254-231-1149** (US number, dial link `tel:+12542311149`). The primary button "Start a conversation" opens an email to the address; the phone number is shown beside it as a second, equal way to reach Agkbuilds. There is no booking link. Contact person: **Dylan Borgen** (name only; no job title was given, so none is used).
 
 ## Personality
 - Adjectives: **bold**, **futuristic**, **dependable** (the third is the Director's assumption, decisions #3)
@@ -25,7 +25,7 @@ Businesses that might hire Agkbuilds. Assumed (see decisions #2): owners and man
 
 ## Must-have content
 - What Agkbuilds is: a company that builds custom software for clients (stated plainly in the hero).
-- **What we build:** the kinds of software Agkbuilds makes. The list is **pending from the user** and must not be guessed.
+- **What we build** (supplied by the user, in their words: "a data recovery tool, a card game, a Discord bot"). Three items: **data recovery tools**, **card games**, **Discord bots**. Each gets a one-line description that says only what that kind of software is. No features, supported formats, success rates, player counts, users or "for clients" claims about these specific products, because the user gave none.
 - A short, generic "how we work" (no claims, numbers or promises that weren't supplied).
 - The contact action.
 - Facts policy: **general wording only**. No client names, results, numbers, team bios or testimonials.
@@ -44,8 +44,8 @@ Businesses that might hire Agkbuilds. Assumed (see decisions #2): owners and man
 
 ## Success criteria
 - [ ] The concept (Agkbuilds builds custom software for clients) is clear within 5 seconds of landing on the hero.
-- [ ] A visitor reaches the contact action in ≤ 1 click from the hero, and it opens a working email or booking link.
-- [ ] No sentence on the page names a client, project, result, number, award or team member that the user did not supply.
+- [ ] A visitor reaches the contact action in ≤ 1 click from the hero, and it opens an email to agkbuilds@gmail.com; the phone number 254-231-1149 is visible and is a working `tel:` link on phones.
+- [ ] No sentence on the page names a client, project, result, number, award or team member that the user did not supply. The only supplied specifics are: the three kinds of software, the email, the phone number and the name Dylan Borgen.
 - [ ] The production build exports as a static folder of files (`output: "export"`), with no server code.
 - [ ] The page doesn't read as a generic corporate template: Originality ≥ 8 in the Critic's rubric and none of the banned patterns in `taste-guardrails` appear.
 - [ ] Critic gate passes: rubric average ≥ 8, no criterion < 7, 0 serious or critical axe issues, Lighthouse mobile Performance ≥ 90 and Accessibility = 100.
