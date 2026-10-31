@@ -13,6 +13,7 @@
 //   process-plate.svg       "How we work" plate, 4 cumulative layers, 640×480, inline
 //   process-step-1..4.svg   the same plate frozen at step n, colours embedded
 //                           (light + dark via @media), for <img> use on mobile
+//   balloon.svg             parts-list item balloon (circle only), 40×40, inline
 //   icon.svg                favicon: a wide "A" over a dimension bracket, 32×32
 //   og-sketch.svg           1200×630 target look for the Open Graph image (next/og)
 //   drawing-data.json       anchor points for the few HTML labels laid over drawings
@@ -415,6 +416,17 @@ function icon() {
   );
 }
 
+// ───────────────────── 3b. balloon.svg ─────────────────────
+// Drafting item balloon for the parts list: one circle, pen starts at 9 o'clock.
+// The numeral is HTML laid over it (mono, centred), so the SVG has no text.
+function balloon() {
+  return (
+    SVG_OPEN(40, 40, ' class="agk-balloon"') +
+    `<path pathLength="1" stroke="currentColor" style="vector-effect:non-scaling-stroke;stroke-width:1" d="${circlePath(20, 20, 19.5, 180)}"/>` +
+    `</svg>`
+  );
+}
+
 // ───────────────────── 4. og-sketch.svg ─────────────────────
 // Target look for src/app/opengraph-image.tsx (next/og). Text is set in Archivo
 // (wdth 125 / 800 for the headline) and JetBrains Mono; the Builder reproduces this
@@ -458,7 +470,7 @@ function ogSketch() {
     `<rect width="${W}" height="${H}" fill="${D.bg}"/>` +
     `<path stroke="${D.grid}" d="${guides.join("")}"/>` +
     `<path stroke="${D.line}" d="${rows}"/>` +
-    `<g transform="translate(740 40) scale(0.78)">${hc}</g>` +
+    `<g fill="none" transform="translate(830 60) scale(0.72)">${hc}</g>` +
     `<g font-family="Archivo, sans-serif" font-weight="800" font-stretch="125%" font-size="${fs0}" letter-spacing="-0.9">${text}</g>` +
     `<path stroke="${D.draft}" d="${line(m, dimY, dimR, dimY)}${line(m, dimY - 8, m, dimY + 8)}${line(dimR, dimY - 8, dimR, dimY + 8)}"/>` +
     `<g font-family="JetBrains Mono, monospace" font-weight="500" font-size="15" letter-spacing="0.9" fill="${D.muted}">` +
@@ -478,6 +490,7 @@ sizes["hero-construction.svg"] = write("hero-construction.svg", hero.svg);
 sizes["process-plate.svg"] = write("process-plate.svg", processPlate({ mode: "css" }));
 for (let n = 1; n <= 4; n++) sizes[`process-step-${n}.svg`] = write(`process-step-${n}.svg`, processPlate({ mode: "img", upTo: n }));
 sizes["icon.svg"] = write("icon.svg", icon());
+sizes["balloon.svg"] = write("balloon.svg", balloon());
 sizes["og-sketch.svg"] = write("og-sketch.svg", ogSketch());
 const data = {
   generator: "drawing.mjs",

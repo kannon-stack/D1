@@ -89,7 +89,7 @@
   /* ── Space & layout ─────────────────────────────────────── */
   --spacing: 0.25rem;
   --spacing-gutter: clamp(1rem, 0.6667rem + 1.4815vw, 1.5rem); /* 16 → 24px */
-  --spacing-margin: clamp(1rem, -0.1rem + 4.7vw, 5rem); /* side margin: 16 @375 · 32 @768 · 40 @1080 · 80 cap; see layout-spec */
+  --spacing-margin: clamp(1rem, 0.171rem + 3.536vw, 4rem); /* side margin: 16 @375 · 30 @768 · 48 @1280 · 64 cap; at ≥1440 the 1280 container centres */
   --spacing-section-xs: clamp(3rem, 2.5rem + 2.2vw, 4.5rem); /* 48 → 72: inside a run */
   --spacing-section-sm: clamp(4rem, 3rem + 4.4vw, 7rem); /* 64 → 112 */
   --spacing-section-md: clamp(6rem, 4.6667rem + 5.9259vw, 10rem); /* 96 → 160 */
@@ -125,6 +125,30 @@
   --hl-cap: 0.071em;
   --hl-base: 0.774em;
   --hl-row: 0.88em;
+
+  /* Background layers reused by the fixed sheet guides and the hero's .hl-cover
+     (layout-spec Global + hero). Units (em, cqw) resolve where the layer is USED:
+     --hl-rows on an element whose font-size is --text-hero; --sheet-cols inside
+     div.sheet (container-type: inline-size), with the box's left edge on column 1. */
+  --cols: 4;
+  --hl-rows: linear-gradient(to bottom,
+      transparent calc(var(--hl-cap) - 1px), var(--color-line) calc(var(--hl-cap) - 1px),
+      var(--color-line) var(--hl-cap), transparent var(--hl-cap),
+      transparent var(--hl-base), var(--color-line) var(--hl-base),
+      var(--color-line) calc(var(--hl-base) + 1px), transparent calc(var(--hl-base) + 1px))
+    0 0 / 100% var(--hl-row) repeat-y;
+  --sheet-cols: linear-gradient(90deg, var(--color-grid) 1px, transparent 1px)
+    0 0 / calc((100cqw + var(--spacing-gutter)) / var(--cols)) 100% repeat-x;
+}
+@media (width >= 48rem) {
+  :root {
+    --cols: 8;
+  }
+}
+@media (width >= 64rem) {
+  :root {
+    --cols: 12;
+  }
 }
 
 /* Fonts come from next/font CSS variables set on <html>, so `inline` is required.
