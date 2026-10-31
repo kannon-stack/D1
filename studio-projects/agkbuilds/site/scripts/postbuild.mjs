@@ -22,6 +22,14 @@ if (!fs.existsSync(ogSrc)) {
 }
 fs.copyFileSync(ogSrc, path.join(out, "opengraph-image.png"));
 
+// GitHub Pages runs Jekyll, which skips underscore folders: without .nojekyll /_next/* would 404.
+const nojekyll = path.join(out, ".nojekyll");
+fs.writeFileSync(nojekyll, "");
+if (!fs.existsSync(nojekyll)) {
+  console.error("postbuild: could not write out/.nojekyll");
+  process.exit(1);
+}
+
 const files = [];
 (function walk(dir) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -36,12 +44,14 @@ let rewritten = 0;
 const problems = [];
 for (const f of files) {
   let s = fs.readFileSync(f, "utf8");
-  const png = s.replace(/\/opengraph-image(?=\?|")/g, "/opengraph-image.png");
+  // og:image / twitter:image → /opengraph-image.png, dropping Next's ?<hash> cache key
+  const png = s.replace(/\/opengraph-image(?:\.png)?(?:\?[\w-]+)?(?=["\\])/g, "/opengraph-image.png");
   if (png !== s) {
     s = png;
     fs.writeFileSync(f, s);
   }
   if (/\/opengraph-image(?!\.png)(?=[?"])/.test(s)) problems.push(`${path.relative(out, f)}: extensionless OG image URL`);
+  if (/\/opengraph-image\.png\?/.test(s)) problems.push(`${path.relative(out, f)}: query string on the OG image URL`);
   if (!siteUrl) {
     const next = s.replace(/https?:\/\/localhost(?::\d+)?(?=\/)/g, "");
     if (next !== s) {
@@ -60,6 +70,6 @@ if (problems.length) {
 }
 console.log(
   siteUrl
-    ? `postbuild: site URL ${siteUrl}; og:image → opengraph-image.png; ${files.length} files checked, no localhost`
-    : `postbuild: no NEXT_PUBLIC_SITE_URL; og:image → /opengraph-image.png (root-relative) in ${rewritten} files; no localhost, canonical or og:url in ${files.length} files`,
+    ? `postbuild: site URL ${siteUrl}; og:image → opengraph-image.png; .nojekyll written; ${files.length} files checked, no localhost`
+    : `postbuild: no NEXT_PUBLIC_SITE_URL; og:image → /opengraph-image.png (root-relative) in ${rewritten} files; .nojekyll written; no localhost, canonical or og:url in ${files.length} files`,
 );

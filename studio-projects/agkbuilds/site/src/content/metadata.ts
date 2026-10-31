@@ -23,7 +23,8 @@ export const site = {
   locale: "en_US",
 } as const;
 
-// JSON-LD verbatim from metadata.md (deliberately no url, logo, address or sameAs).
+// JSON-LD verbatim from metadata.md (no logo, address or sameAs; page.tsx adds `url` only when
+// NEXT_PUBLIC_SITE_URL is set, as metadata.md allows).
 export const jsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
