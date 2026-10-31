@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Northbound favicon: a summit inside two contours (the inner one an index line),
+       with a north tick above. Built to read at 16px: 2 rings + 1 solid mark. Follows the OS scheme. -->
+  <style>
+    .g{fill:#f8f5ed}.m{fill:none;stroke:#d39f80;stroke-width:2}.i{fill:none;stroke:#ae5528;stroke-width:2.75}.s{fill:#2b221a}
+    @media (prefers-color-scheme: dark){.g{fill:#201914}.m{stroke:#8a5b3e}.i{stroke:#e89662}.s{fill:#ece7dd}}
+  </style>
+  <rect class="g" width="32" height="32"/>
+  <path class="m" d="M2.6 20.6C2.6 12.4 8.3 6.4 16.2 6.4c7.6 0 13.2 5.6 13.2 12.6 0 5.4-4.3 8.2-13 8.2-9 0-13.8-1.8-13.8-6.6z"/>
+  <path class="i" d="M8.2 20.1c0-4.9 3.4-8.5 7.9-8.5 4.4 0 7.6 3.3 7.6 7.5 0 3-2.7 4.3-7.6 4.3-5.1 0-7.9-.9-7.9-3.3z"/>
+  <path class="s" d="M16 14.6l3.6 6h-7.2z"/>
+  <path class="s" d="M15.1 0h1.8v4.4h-1.8z"/>
+</svg>
