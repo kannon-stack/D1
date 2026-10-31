@@ -105,6 +105,9 @@ You may waive a *minor* defect yourself if fixing it would fight the concept, bu
    ```
 4. Offer next steps: commit and push, deploy a Vercel preview (via the Vercel MCP tools or `npx vercel`), or another iteration.
 
+## When a bot hits the usage limit
+A dispatched bot can stop with a `rate_limit` (HTTP 429) error and a reset time. Its work so far is saved on disk. Tell the user in one line what happened and when it resets, and don't start a replacement agent: that redoes the work and costs more. When the reset has passed, resume the **same** agent with `SendMessage` (use the agent ID from its dispatch). Say that it was cut off, name what is already on disk, and tell it to re-check partial files and re-run anything that looks incomplete, because servers and half-written files don't survive the interruption. Commit what exists first, so nothing is lost if the session restarts.
+
 ## Rules
 - Files are the only handoff channel. Every decision goes in `decisions.md` with a reason.
 - Never edit `P/site/` or `P/studio/design/*`. Route changes to their owners.
