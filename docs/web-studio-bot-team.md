@@ -384,6 +384,8 @@ Each criterion is scored 1–10, and every score cites a screenshot.
 
 `/studio "landing page for Northbound, a small-batch specialty coffee roaster"`
 
+> This walk-through was written before the first run and is illustrative: its directions, scores and defects are made up. The measured results of the real run are in section 8.
+
 1. **Intake.** Audience: home-brewing enthusiasts. Primary action: start a subscription. Personality: *precise, warm, outdoorsy*; anti-adjective: *hipster*.
 2. **Directions.** The Designer drafts 3:
    - **A · Field Notes:** editorial serif, topographic line art, a notebook grid.
@@ -421,7 +423,7 @@ Each criterion is scored 1–10, and every score cites a screenshot.
 │   ├── nextjs-craft/         Builder + globals.css, motion.ts, Reveal, SplitLines templates
 │   └── visual-qa/            Critic + round-report template
 └── studio-tools/             scripts the bots run (see its README)
-    ├── scripts/              doctor, serve, screenshot, audit, contrast, type-scale
+    ├── scripts/              doctor, serve, screenshot, audit, contrast, type-scale, check-content
     └── hooks/                critic-write-guard
 studio-projects/<slug>/       one folder per site: studio/ handoff files + site/ Next.js app
 ```
@@ -436,6 +438,33 @@ studio-projects/<slug>/       one folder per site: studio/ handoff files + site/
 - **Repo wiring:** the repo's `.gitignore` keeps the rest of `.claude/` local, so only `agents/`, `skills/` and `studio-tools/` are tracked. Root ESLint and Docker ignore `.claude/` and `studio-projects/`.
 - **Raw evidence isn't committed:** each round's screenshots and audit files (`studio/qa/round-N/`) are regenerated, so they're ignored. The `round-N.md` reports that cite them are kept.
 - **Cost and speed:** the Designer, Builder and Critic run on Opus at high effort, and the Copywriter on Sonnet. The 3-round cap on the critique loop keeps a run bounded.
+
+---
+
+## 8. First real run: Northbound
+
+The studio's first end-to-end run built a landing page for **Northbound**, a fictional specialty coffee roaster (a made-up brand, so the sample run needed no real client). Everything is in `studio-projects/northbound/`: the handoff files in `studio/` and the Next.js site in `site/`. The chosen direction was **A · Contour**: the hero headline "Every roast is a climb" sits over a topographic map whose contour lines are computed from a roast-temperature curve, and an interactive cross-section (A–A′) draws the roast as a climb.
+
+### Critique loop, as measured by the Critic
+| Round | Verdict | Rubric average (lowest) | Lighthouse mobile Performance | axe serious + critical | Defects filed |
+|---|---|---|---|---|---|
+| 1 | FAIL | 8.2 (7) | 88 | 0 | 9 (1 blocker, 1 major, 7 minor) |
+| 2 | FAIL | 8.3 (7) | 93 (median of 3) | 0 | 4 new (1 blocker, 3 minor); R1-01..R1-09 all closed |
+| 3 | **PASS** | 8.4 (8) | 93 and 94 (two medians of 3) | 0 | 1 new, minor, waived by the Director |
+
+Final Lighthouse accessibility, best-practices and SEO scores were all 100. There was no horizontal overflow at 375, 768, 1280 or 1920 px, and no console errors.
+
+### What the run showed
+- **The loop earned its cost.** Round 1 failed on a number the Builder couldn't see by eye (Lighthouse 88 against the gate of 90). Round 2 found a blocker that an optimisation had introduced: `content-visibility` made smooth-scroll anchor links land up to 1198 px off target. Both were caught by the Critic's own measurements, not the Builder's self-check.
+- **Lighthouse needs a median.** A single run swings by several points, so `audit.mjs` now reports the median of 3 after a warm-up.
+- **The fix for the first failure was font subsetting,** not the Critic's suggestion of preloading only the roman face (which measured no gain). The Builder's recipe, and the anchor-landing check that exposed the later blocker, are now in the `nextjs-craft` skill.
+- **The Copywriter has no shell,** so nothing parsed its YAML and JSON-LD until `check-content.mjs` existed. The Director now runs it after step 4.
+- **The screenshot tool needed to understand `content-visibility`:** Chromium doesn't paint off-screen `auto` sections in full-page captures, which produced blank bands that looked like defects.
+- **Usage limits interrupt long runs.** Two 5-hour limits stopped a bot mid-task. The bot's files on disk survived, and resuming the same agent with `SendMessage` finished the work without redoing it. The `/studio` runbook now says so.
+- **Fictional brands shouldn't be put to the user.** The headline-pick question made no sense for a made-up company. For a sample or demo run the Director picks and logs the choice, as it does when the user delegates.
+
+### Open item
+R3-01 (minor): on the 375 px roast stage the playhead line crosses the "DROP 10:40 · 207 °C" label. It does not touch any gate input and was waived in `decisions.md` (#17).
 
 ---
 

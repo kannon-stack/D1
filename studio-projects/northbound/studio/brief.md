@@ -46,8 +46,12 @@ Home-brewing enthusiasts, roughly 25–45. They own a burr grinder, a scale and 
 7. Footer
 
 ## Success criteria
-- [ ] The concept is clear within 5 seconds of landing on the hero.
-- [ ] A visitor can reach the primary action in ≤ 2 clicks from the hero.
-- [ ] The roast curve shows up as real, legible data, not decoration.
-- [ ] The 3 current roasts are comparable at a glance (origin, process, notes, roast level).
-- [ ] Critic gate passes: rubric average ≥ 8, no criterion < 7, 0 serious or critical axe issues, Lighthouse mobile Performance ≥ 90 and Accessibility = 100.
+Checked against `qa/round-3.md` (round 3, PASS).
+
+- [x] The concept is clear within 5 seconds of landing on the hero. *Concept clarity 9; the fold shows "Every roast is a climb" over the section line with its spot heights (`fold-1280-light.png`, `fold-375-light.png`).*
+- [x] A visitor can reach the primary action in ≤ 2 clicks from the hero. *One click on "Start a subscription" lands the plan picker exactly under the nav; the second click submits (`click-1280-smooth-top-subscribe.png`). 144 of 144 anchor cases land at 64 px.*
+- [x] The roast curve shows up as real, legible data, not decoration. *Signature moment 9; the stage has labelled axes, a live readout and waypoints from the batch data.*
+- [x] The 3 current roasts are comparable at a glance (origin, process, notes, roast level). *Field rows align across the three cards (R1-06 closed, `tiles/1280-light/tile-04.png`).*
+- [x] Critic gate passes: rubric average ≥ 8, no criterion < 7, 0 serious or critical axe issues, Lighthouse mobile Performance ≥ 90 and Accessibility = 100. *Average 8.4, lowest 8; axe 0; Lighthouse Performance 93 and 94 (two medians of 3); Accessibility 100.*
+
+Open at sign-off: R3-01 (minor, waived in decisions #17).
