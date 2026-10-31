@@ -8,6 +8,8 @@
 //
 // `start` expects `npm run build` to have been run; it stops any server it
 // previously started on the same port, then waits until the URL returns 200.
+// If the site's next.config sets `output: "export"` (or you pass --static), it serves the
+// exported `out/` folder with static-server.mjs instead of `next start`.
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -61,7 +63,21 @@ if (command !== "start" || !args.dir) {
 }
 
 const dir = path.resolve(String(args.dir));
-if (!fs.existsSync(path.join(dir, ".next"))) {
+
+// A site built with `output: "export"` has no server: `next start` refuses it. Serve its
+// plain `out/` folder with the bundled static server instead (like a static host would).
+const nextConfig = ["next.config.ts", "next.config.mjs", "next.config.js"]
+  .map((f) => path.join(dir, f))
+  .find((f) => fs.existsSync(f));
+const isExport =
+  Boolean(args.static) || (nextConfig && /output\s*:\s*["']export["']/.test(fs.readFileSync(nextConfig, "utf8")));
+const outDir = path.join(dir, "out");
+if (isExport) {
+  if (!fs.existsSync(path.join(outDir, "index.html"))) {
+    console.error(`No static export in ${outDir}. Run \`npm run build\` there first (next.config sets output: "export").`);
+    process.exit(1);
+  }
+} else if (!fs.existsSync(path.join(dir, ".next"))) {
   console.error(`No .next build in ${dir}. Run \`npm run build\` there first.`);
   process.exit(1);
 }
@@ -73,7 +89,10 @@ if (await up()) {
 }
 
 const out = fs.openSync(logFile, "w");
-const child = spawn("npx", ["next", "start", "-p", String(port)], {
+const [cmd, cmdArgs] = isExport
+  ? ["node", [path.join(import.meta.dirname, "static-server.mjs"), "--dir", outDir, "--port", String(port)]]
+  : ["npx", ["next", "start", "-p", String(port)]];
+const child = spawn(cmd, cmdArgs, {
   cwd: dir,
   detached: true,
   stdio: ["ignore", out, out],

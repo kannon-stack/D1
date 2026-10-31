@@ -26,6 +26,7 @@ cd site && npm i motion
   //   turbopack: { root, ...existing turbopack keys (rules etc.) },
   //   outputFileTracingRoot: root,
   ```
+- **Static pages:** if the brief says the page must be static, set `output: "export"` and `images: { unoptimized: true }` in the config, and use no server code (no API routes, no middleware, no `next/image` optimisation). `npm run build` then writes the site to `out/`, and `serve.mjs` serves that folder automatically, so the self-check below tests what will be uploaded. Metadata routes such as `opengraph-image.tsx` need `export const dynamic = "force-static"`. Set `metadataBase` only when a real site URL is known (for example from `NEXT_PUBLIC_SITE_URL`), and grep the built HTML for `localhost` before handing off.
 - **Clean out the starter:** delete the boilerplate SVGs in `public/` and the starter page and CSS content.
 - **Structure:**
   ```
