@@ -44,7 +44,7 @@
 | RC5 | `roast-curve` | plumb cursor (1px ink vertical line + 7px accent dot on curve) + readout `T m:ss · BT 000.0°` | same as RC4; position `left = h × 100%`; readout from `btPerSecond[round(h × 720)]` | translateX (px from h × stage width); text swap | spring-smoothed progress | cursor hidden; readout shows final "DROP 10:40 · 207.0°" |
 | RC6 | `roast-curve` | event waypoints (CHARGE, TP, DE, FC, DROP: dot, leader, label) | each fires when the head passes `t` (CHARGE at RC4 start) | dot scale 0 → 1; leader scaleY 0 → 1; label opacity 0 → 1, y 4px → 0 | base 450ms, ease-pin, label 80ms after dot | all shown |
 | RC7 | `roast-curve` | projection lines settle | scroll-linked `p` [0.72, 0.78] | opacity 1 → 0.35 | linear | 0.35 |
-| RC8 | `roast-curve` | cooling `#nb-cooling` + "Cooling" label | scroll-linked `p` [0.72, 0.80] | clip-path inset right → 0 (starts at x = 640/720) | linear | shown |
+| RC8 | `roast-curve` | cooling `#nb-cooling` + "Cooling" label (md+ only; no in-plot label at sm) | scroll-linked `p` [0.72, 0.80] | clip-path inset right → 0 (starts at x = 640/720) | linear | shown |
 | RC9 | `roast-curve` | phase bar segments (drying, Maillard, development) | scroll-linked `p` [0.78, 0.92], sequential thirds | scaleX 0 → 1, origin left; label opacity 0 → 1 at segment end | linear | full bar |
 | RC10 | `roast-curve` | readout final state | `p ≥ 0.92` | readout text → "Drop 10:40 · 207.0° · DTR 17%" | base, crossfade | final text |
 | RC-sm | `roast-curve` | whole sequence on < 768px (no sticky) | `useInView(stage, { amount: 0.35, once: true })` | runs RC1–RC10 as a timeline: RC1 0–400ms; RC2 200–1000ms; RC3 600–1400ms; RC4/5/6 1000–3400ms; RC8 3400–3800; RC9 3800–4600 | ease-plot for wipes, ease-pin for pins | final state |
@@ -54,7 +54,7 @@
 | W2 | `how-it-works` | a waypoint being skipped / restored | click / Enter / Space on the waypoint | pin fill accent → transparent (2px accent ring stays); date strike line clip-path wipe 0 → 100% | fast 200ms; strike plot-fast 300ms ease-plot | instant state change |
 | W3 | `how-it-works` | readout values ("Next at your door", count) | state change | old value opacity 1 → 0, y 0 → −4; new value 0 → 1, 4 → 0 | fast 200ms, ease-pin | instant swap |
 | W4 | `how-it-works` | route dashed line | `in-view amount 0.4`, once | clip-path wipe left → right (top → bottom on mobile) | plot 1100ms, ease-plot; pins (W1 arriving) follow, stagger 40ms | complete |
-| P1 | `proof` | figure leader line (accent hairline from numeral to caption) | `in-view amount 0.5`, once | scaleX 0 → 1, origin left | plot 1100ms, ease-plot | shown |
+| P1 | `proof` | stat leader (accent rule under the value, full column width, 6 px end tick) | `in-view amount 0.5`, once | scaleX 0 → 1, origin left | plot 1100ms, ease-plot | shown |
 | S1 | `subscribe` | plan / preference radio cards | select | background → `--color-moss` (light) / `--color-moss` (dark); border → ink; summit marker ▲ opacity 0 → 1 | fast 200ms | instant |
 | S2 | `subscribe` | submit button, loading | submit (valid) | 2px accent-ink hairline at the button's bottom edge wipes left → right and repeats until resolved | plot 1100ms, ease-plot, loop **only while loading** | static label "Setting your route…" without the line |
 | S3 | `subscribe` | form panel → success panel | resolved | form opacity 1 → 0 (fast×0.8, ease-in), then success opacity 0 → 1, y 8 → 0; ▲ marker pins last | base 450ms ease-pin | instant swap; focus moves to the success heading |

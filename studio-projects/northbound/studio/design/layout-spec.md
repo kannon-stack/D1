@@ -207,16 +207,16 @@ Mobile (375):
   - `A` (left 8 px) and `A′` (right 8 px), `text-sm` wide 600, above the dashed line, with a bg knockout.
   - **Crossing ticks** from `strip.crossings` (77): 1 px ink, centred on the midline at `left: <left>%`, 6 px tall (minor) or 14 px (index). At lg+, index ticks also carry a `<T>°` label above them (`text-xs` map `num` muted, knockout).
   - A 1 px `--color-line` rule along the strip's top and bottom.
-- **Row 5, profile** (`minmax(14rem, 26rem)`; sm 15rem; `role="img"`, `aria-label` = `roast-curve.image_alt`): inline `profile-a.svg` with `preserveAspectRatio="none"`. Wrap `#nb-ground` + `#nb-roast` and `#nb-cooling` in separate layers so each can be clipped on its own (motion RC4, RC8). Overlays, all `aria-hidden`:
+- **Row 5, profile** (`minmax(14rem, 26rem)`; sm 15rem; `role="img"`, `aria-label` = `roast-curve.image_alt`): inline `profile-a.svg` with `preserveAspectRatio="none"`. Wrap `#nb-ground` + `#nb-roast` and `#nb-cooling` in separate layers so each can be clipped on its own (motion RC4, RC8). At sm only, the row also reserves a 20 px **label lane** above the plot (`padding-top: 20px`; row height 15rem + 20px). All overlay percentages refer to the plot box, not the lane. Overlays, all `aria-hidden`:
   - **Projection lines** for the 16 index crossings: 1 px ink at `left: <left>%`, from `top: 0` to `top: (220 − T) / 160 × 100%`, ending in a 4 px ink dot. They rest at opacity 0.35.
-  - **Y labels** `200°`, `160°`, `120°`, `80°` (every other gridline): `text-xs` map `num` muted, right-aligned 8 px from the right edge, 4 px above their gridline, knockout.
+  - **Y labels** (`text-xs` map `num` muted, 4 px above their gridline, bg knockout). md+: `200°`, `160°`, `120°`, `80°` (every other gridline), right-aligned 8 px from the right edge. sm: only `160°` and `120°`, left-aligned at `left: 40px`, which is clear of the charge fall and the TP dot. At sm the right edge belongs to the cooling curve and the DROP label.
   - **Event waypoints** from `profile.events`: an 8 px accent dot with a 2 px bg ring, a 1 px ink leader, and a `text-xs` map label. The label is the event name `roast-curve.chart.events[].name` in 600 at md+ (the codes `CHG/TP/DE/FC/DROP` at sm), then `time` · `temp` in 500 `num`. Placement:
     - CHARGE (`0% / 12.5%`): label at the page margin, `top: 2%`, no leader. Its `temp` is empty in copy, so show the time only.
     - TP (`9% / 82.5%`): label centred under the dot, leader 12 px down.
     - DE (`37.5% / 42.5%`): label above-left, leader 24 px up, with the label's right edge on the leader.
-    - FC (`73.6% / 15%`): label below-right, leader 24 px down, ground knockout.
-    - DROP (`88.9% / 8.1%`): a 10 px accent `▲` instead of a dot; label above-left (right edge 8 px left of the ▲, bottom 10 px above it).
-  - **Cooling label** `roast-curve.chart.cooling_label` at `left 93%; top 46%`, `text-xs` map muted, after a 12 px dashed lake rule.
+    - FC (`73.6% / 15%`): md+: label below-right, leader 24 px down, ground knockout. sm: label **above-left**, right edge 6 px left of the dot, bottom 8 px above it, no leader, bg knockout (it lands at about 45–72 % across and 5–12 % down, above the curve).
+    - DROP (`88.9% / 8.1%`): a 10 px accent `▲` instead of a dot. md+: label above-left (right edge 8 px left of the ▲, bottom 10 px above it). sm: label in the **label lane** below the strip, right-aligned 8 px from the right edge, bg knockout, with a 1 px ink leader from the label's bottom straight down to the ▲. It never sits on the strip edge.
+  - **Cooling label** (md+ only): `roast-curve.chart.cooling_label`, left-aligned with its top edge at `left: 90%; top: 70%`, `text-xs` map muted, after a 12 px dashed lake rule, bg knockout. This is below the curve: from 90 % to 100 % across, the cooling curve stays above 65.3 % of the plot height (`btPerSecond`), so no line crosses it. **sm: no in-plot Cooling label**; the phase bar already reads COOLING.
   - **Plumb cursor** (motion RC5): a 1 px ink vertical line spanning strip and profile, with a 7 px accent dot riding the curve.
 - **Row 6, time axis:** minute ticks, every 1:00 at md+ and every 2:00 at sm, in `text-xs` map `num` muted at `left: t/720`. `0:00` is left-aligned at 4 px and `12:00` right-aligned at 4 px; the rest are centred. Below the ticks, `roast-curve.chart.x_axis` sits at left and `roast-curve.chart.y_axis` at right (eyebrow style, muted), 8 px from the edges.
 - **Accessible data:** inside the `figure`, a visually hidden `table` captioned with `roast-curve.chart.title`. Columns: Event / Time / Bean temperature / What happens (`events[].name`, `time`, `temp`, `note`). After the events come 3 phase rows (`phases[].name`, `time`, `share`).
@@ -244,7 +244,7 @@ Mobile (375):
 - `roast-curve.annotations[].title` **16** ✓ · `.body` **140** ✓
 - `roast-curve.card.title` **22** ✓ · `.caption` **110** ✓ · `.lines[0..5]` **44** each ✓ · `.image_alt` **125** ✓
 
-**Mobile changes:** there's no sticky stage; RC-sm plays once when the stage comes into view. The curve card shrinks to cols 1–2, with its caption beside it in cols 3–4. Event labels switch to codes. Phase names move under the bar. The y axis keeps only 200° and 120°. Index tick labels are hidden, and the time axis steps by 2 minutes. The narration line stays (1–2 lines). The notes stack.
+**Mobile changes:** there's no sticky stage; RC-sm plays once when the stage comes into view. The curve card shrinks to cols 1–2, with its caption beside it in cols 3–4. Event labels switch to codes. Phase names move under the bar. The y axis keeps only 160° and 120°, at the left. FC's label goes above-left, DROP's label moves to the label lane under the strip, and the in-plot Cooling label is dropped. Index tick labels are hidden, and the time axis steps by 2 minutes. The narration line stays (1–2 lines). The notes stack.
 
 ---
 
@@ -499,7 +499,7 @@ Mobile (375):
   - The opening `“` hangs in col 1 at lg+, in accent, `text-5xl` wide 300. At sm it sits inline.
   - Attribution, margin-top 24: `proof.quote.name` · `proof.quote.place` · `proof.quote.method` (eyebrow style, ink-soft).
 - **Sourcing** (lg cols 9–12 · md 1–8 · sm 1–4; at lg it starts level with the quote's first line): `proof.sourcing.label` (eyebrow, muted), `proof.sourcing.headline` (`text-xl` wide 400, ink), `proof.sourcing.body` (`text-base` ink-soft), gap 12.
-- **Stat** (same column, margin-top 40): `proof.stat.value` in `text-4xl xl:text-5xl` wide 300 `num`, ink. A 1 px accent leader runs from the value's right edge to the column's right edge, then turns down 24 px (motion P1). `proof.stat.label` (`text-sm` ink-soft) sits under it.
+- **Stat** (same column, margin-top 40): `proof.stat.value` in `text-4xl xl:text-5xl` wide 300 `num`, ink. The **leader runs under the value**, so it doesn't depend on how wide the value is. It is a 1 px accent rule, 12 px below the value's baseline, spanning the full column width, ending in a 6 px downward tick at its right end (motion P1). `proof.stat.label` (`text-sm` ink-soft) sits 12 px under the rule. Same at every breakpoint.
 - No cards, avatars, stars or logos.
 
 | Element | Columns (sm / md / lg / xl) | Type token | Color | Asset | Motion | States |
@@ -512,7 +512,7 @@ Mobile (375):
 
 **Copy slots:** `proof.eyebrow` **44** ✓ · `proof.title` **18 × 3** ✓ · `proof.quote.label` **16** ✓ · `proof.quote.text` **180** ✓ (176 characters, about 6 lines at xl and 8 at sm; it's the valley's one voice, so length is fine) · `proof.quote.name` / `place` / `method` **24** each ✓ · `proof.sourcing.label` **16** ✓ · `.headline` **40** ✓ · `.body` **200** ✓ · `proof.stat.value` **8** ✓ · `proof.stat.label` **70** ✓
 
-**Mobile changes:** the quote drops to `text-2xl` with the open quote inline. Sourcing and stat follow in order, 48 px apart, and the stat's leader runs horizontally only. The section keeps its `section-lg` padding: the breath matters most on a phone.
+**Mobile changes:** the quote drops to `text-2xl` with the open quote inline. Sourcing and stat follow in order, 48 px apart, and the stat keeps the same under-value leader. The section keeps its `section-lg` padding: the breath matters most on a phone.
 
 ---
 
