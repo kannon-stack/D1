@@ -48,6 +48,8 @@ cd site && npm i motion
   - **No hex, rgb or oklch literals in components, and no arbitrary `[…]` values** where a token exists.
 - **Fonts:** load them with `next/font/google` in `layout.tsx`, using `variable: "--font-display-face"` and `"--font-text-face"` (matching the tokens' `@theme inline` block) plus `display: "swap"`. Put both `.variable` class names on `<html>`.
   - If Google Fonts can't be reached at build time, `npm i @fontsource-variable/<family>` and use `next/font/local` pointing at its woff2 file.
+  - If Lighthouse Performance ends up within a few points of 90, switch to subset local fonts (section 6).
+- **Symbols:** don't let arrows, triangles, × or similar fall back to a system font. Either keep the glyph in the font subset, or draw it as one small inline-SVG component sized in `em` with `currentColor` (`components/ui/Triangle.tsx` in the Northbound build is a model).
 - **Copy:** turn `content/copy.md` into `src/content/copy.ts`, one key per section and slot, using the chosen hero headline. **No user-facing strings hard-coded in JSX.**
 - **Metadata:** take it from `content/metadata.md`.
   - `export const metadata` sets `metadataBase`, `title`, `description` and `openGraph`.
@@ -90,7 +92,18 @@ cd site && npm i motion
 3. **Read the screenshots** and compare them with `layout-spec.md`. Fix anything obviously off: overflow, broken fonts, missing assets, unreadable dark mode.
 4. Stop the server: `node .claude/studio-tools/scripts/serve.mjs stop`.
 
-## 6. When fixing Critic defects
+## 6. When Lighthouse is close to the gate
+Learned on the first sample run (mobile Performance 88 against a gate of 90). Measure with `audit.mjs`, which reports the median of 3, before and after each change. In order of payoff:
+1. **Subset local fonts.** Request the family from Google Fonts with `text=` (printable ASCII plus every non-ASCII character used in `src/`), keep the variable axes, save the woff2 files in `src/app/fonts/`, and load them with `next/font/local`.
+   - Write `scripts/subset-fonts.mjs` that scans `src/` (literal characters and `\uXXXX` escapes) and rewrites the exact character list into `src/app/fonts/README.md`. Re-run it whenever copy or components add a character, or that character silently falls back to a system font.
+   - Keep the font's licence file (SIL OFL for most Google families) beside the font files.
+   - Preload every face used above the fold. Preloading only the roman gave no gain.
+   - Log the deviation from `type.md` for the Director to record.
+2. **Render static SVG on the server.** Terrain, plates and other static artwork stay in Server Components and reach client islands as `children` or slot props, so they add nothing to the client bundle.
+3. **Don't use `content-visibility: auto` on below-fold sections unless you must.** Its placeholder heights shift the page as sections render, so smooth-scroll anchors and direct `/#hash` loads land hundreds of pixels off (the Critic measured −1198 px at 1280). The Northbound site reached 94 without it. If you do use it, force `content-visibility: visible` for in-page navigation and prove the anchors below.
+4. **Anchors must land exactly.** Set `scroll-margin-top` to the nav height and check every in-page link at 375 and 1280, in smooth and reduced-motion modes, plus direct loads of each `/#id`. The target section's top should sit at the nav height (±4 px). `site/scripts/check-anchors.mjs` in the Northbound build is a model.
+
+## 7. When fixing Critic defects
 - Read `P/studio/qa/round-N.md` and fix exactly the defect IDs assigned to `builder`, plus any spec or copy changes the Director passes on.
 - Don't refactor unrelated code. Re-run the self-check.
 - In your reply, list each defect ID as `fixed` or `not fixed (why)`.
@@ -100,4 +113,5 @@ cd site && npm i motion
 - [ ] Every section in `layout-spec.md` is implemented, with its spans, tokens, assets, motion rows and states.
 - [ ] Copy comes only from `copy.ts`; metadata, JSON-LD, `icon.svg` and the OG image are present.
 - [ ] Reduced motion leaves every piece of content visible and still.
+- [ ] Every in-page link lands its section at the nav height, in smooth and reduced-motion modes.
 - [ ] Self-check screenshots were read and match the spec.
