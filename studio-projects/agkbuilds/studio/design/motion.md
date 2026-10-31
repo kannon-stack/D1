@@ -20,7 +20,7 @@
 **Springs:** none. (No Motion library on this page.)
 
 ## Choreography
-All rows except the copy states live inside `@media (prefers-reduced-motion: no-preference)`. Outside it, every decorative layer is in its final state from the first paint, and the overlays used only for the reveal (`.hl-cover`, `.hl-draw`, `.hl-edge`) are `display: none`. "t" is ms after the first paint.
+All rows except the copy states and the process **states** (P1–P4, which swap instantly under reduced motion; see their fallback column) live inside `@media (prefers-reduced-motion: no-preference)`. Outside it, every decorative layer is in its final state from the first paint, and the overlays used only for the reveal (`.hl-cover`, `.hl-draw`, `.hl-edge`) are `display: none`. "t" is ms after the first paint.
 
 | ID | Section | Element | Trigger | Property: from → to | Timing | Reduced motion |
 |---|---|---|---|---|---|---|
@@ -38,10 +38,10 @@ All rows except the copy states live inside `@media (prefers-reduced-motion: no-
 | B1 | `build` | header rule + each row's bottom rule | in-view amount 0.4 (whole list) | `transform: scaleX(0)` → `scaleX(1)`, origin left | pen, stagger 80ms per rule | shown |
 | B2 | `build` | balloons (`.balloon` inline SVG circle, pathLength 1) | same | `stroke-dashoffset 1 → 0`, numeral `opacity 0 → 1` at the end | base, pen, stagger 80ms, starts 120ms after its rule | shown |
 | B3 | `build` | end double rule + count line | same, after the last row | rules `scaleX 0 → 1`; count `opacity 0 → 1` | pen; count fast | shown |
-| P1 | `process` | plate layer `#pl-n` when step n becomes active (n = 1…3) | `data-step ≥ n` (IntersectionObserver, threshold 0.55 on each step, rootMargin `-35% 0px -35% 0px`) | every `path[pathLength]` in the layer: `stroke-dashoffset 1 → 0`; arrowheads/nodes `opacity 0 → 1` at 70 % | slow (700), pen, stagger 30ms per path (cap 300ms total stagger) | all layers 1–4 shown, step 4 state |
-| P2 | `process` | `#pl-4` solids at step 4 | `data-step ≥ 4` | `clip-path: inset(0 100% 0 0)` → `inset(0)` | fill (460), fill | shown |
-| P3 | `process` | `#pl-1`, `#pl-2` recede at step 4 | `data-step = 4` | `opacity 1 → 0.45` | slow, pen | 0.45 |
-| P4 | `process` | active step marker (number box, segment in the bar) | step becomes active | background `transparent → accent`, numeral `ink → accent-ink`; inactive steps' titles `ink → ink-soft` | fast, expo-out | same colours, instant (state, not motion) |
+| P1 | `process` | plate layer `#pl-n` when step n becomes active (n = 1…3) | `data-step ≥ n` (IntersectionObserver, threshold 0.55 on each step, rootMargin `-35% 0px -35% 0px`) | every stroked path in the layer (select structurally, e.g. `.pl-layer > path, .pl-layer > g:not(.pl-heads):not(.pl-nodes) > path`, never by the `[pathLength]` attribute; see R1-01): `stroke-dashoffset 1 → 0`; arrowheads/nodes `opacity 0 → 1` at 70 % | slow (700), pen, stagger 30ms per path (cap 300ms total stagger) | **instant per-step swap (R1-02):** same `data-step` rules, layers ≤ step shown at `stroke-dashoffset: 0` / `opacity: 1`, layers > step hidden (`stroke-dashoffset: 1`, heads/nodes `opacity: 0`), `transition: none`. No draw |
+| P2 | `process` | `#pl-4` solids at step 4 | `data-step ≥ 4` | `clip-path: inset(0 100% 0 0)` → `inset(0)` | fill (460), fill | instant: `inset(0 100% 0 0)` below step 4, `inset(0)` at step 4, no transition |
+| P3 | `process` | `#pl-1`, `#pl-2` recede at step 4 | `data-step = 4` | `opacity 1 → 0.45` | slow, pen | instant: 1 below step 4, 0.45 at step 4 |
+| P4 | `process` | active step marker (number box, segment in the bar, `0n / 04` counter) | step becomes active | background `transparent → accent`, numeral `ink → accent-ink`; inactive steps' titles `ink → ink-soft` | fast, expo-out | same colours, instant (state, not motion). Plate (P1–P3), bar and counter always show the **same** step |
 | C1 | `contact` | title-block cell rules | in-view amount 0.4 | outer frame + inner rules `scaleX/scaleY 0 → 1` from the top-left corner | pen, stagger 60ms | shown |
 | C2 | `contact` | CTA fill (`.cta-fill` layer under the label) | same, t +300ms | `clip-path: inset(0 100% 0 0)` → `inset(0)`; label `ink → accent-ink` at 50 % | fill (460), fill | filled from the start |
 | U1 | all | button hover | hover | bg `accent → accent-hover`; arrow `translateX(0 → 4px)` | instant / fast, expo-out | colour only, no arrow nudge |
@@ -75,7 +75,8 @@ Notes:
 - **First paint is the solid text** under the cover, so the h1 is the LCP element at first paint (occlusion does not delay LCP). Never hide the real `.hl-text` with opacity, `visibility` or `clip-path`.
 - One heavy effect per viewport: H1–H6 happen in the hero only; P1–P3 only while the process plate is on screen.
 - If `data-step` jumps (fast scroll or an anchor jump), the plate goes straight to that step's cumulative state; layers that come in together share one 700 ms draw.
-- Without JavaScript: the process plate shows its step 4 state and no step is highlighted; build and contact show their final states (`[data-inview]` styles apply only under `.js` on `<html>`, set by an inline script in `<head>`).
+- **Reduced motion (R1-02):** the IntersectionObserver still runs and still sets `data-step`; only the transitions are removed. The plate therefore always agrees with the counter (`01 / 04` shows only the measure layer). Put the per-step visibility rules outside any motion media query and the `transition`/`animation` declarations inside `no-preference`.
+- Without JavaScript: the process plate shows its step 4 state and no step is highlighted, and the bar and counter (if rendered without JS) read `04 / 04` with all segments filled, so nothing contradicts the finished plate; build and contact show their final states (`[data-inview]` styles apply only under `.js` on `<html>`, set by an inline script in `<head>`).
 
 ## Rules
 - Animate `transform`, `opacity`, `clip-path` and `stroke-dashoffset` only. Never width, height, top, left or `background-position`.
