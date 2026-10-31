@@ -155,10 +155,10 @@ Desktop (1280): section head and curve card, then the sticky stage (shown in its
 │A ~~~~((((~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~))))~~~~~~~ A′│ strip
 │ ─|||─|─|─ ─ ─|─ ─ ─|─ ─ ─ ─|─ ─ ─ ─ ─ ─|─ ─ ─ ─ ─ ─ ─|─ ─ ─ ─|─|─|─|──── │ ticks
 │ CHARGE 0:00             :      │           :          │       DROP 10:40·207 °C│
-│\  :                     :      │           :        __▲•─ ─ ─.          200°│
-│ \ :                     :      │      __..•'      FC │       ` .         160°│
-│  \:         DE 4:30·152 °C __..•''       8:50·196 °C│         `.        120°│
-│   \__.•-''TP 1:05 · 88 °C                             │  Cooling  `.      80°│
+│\  :                     :      │           :        __▲•─ ─ ─.              │
+│ \ : 160°                :      │      __..•'      FC │       ` .             │
+│  \: 120°    DE 4:30·152 °C __..•''       8:50·196 °C│         `.            │
+│   \__.•-''TP 1:05 · 88 °C                             │  Cooling  `.          │
 │0:00  1:00  2:00  3:00  4:00  5:00  6:00  7:00  8:00  9:00  10:00  11:00 12:00│
 │TIME IN DRUM (MIN:SEC)                                  BEAN TEMPERATURE (°C)│
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -209,7 +209,11 @@ Mobile (375):
   - A 1 px `--color-line` rule along the strip's top and bottom.
 - **Row 5, profile** (`minmax(14rem, 26rem)`; sm 15rem; `role="img"`, `aria-label` = `roast-curve.image_alt`): inline `profile-a.svg` with `preserveAspectRatio="none"`. Wrap `#nb-ground` + `#nb-roast` and `#nb-cooling` in separate layers so each can be clipped on its own (motion RC4, RC8). At sm only, the row also reserves a 20 px **label lane** above the plot (`padding-top: 20px`; row height 15rem + 20px). All overlay percentages refer to the plot box, not the lane. Overlays, all `aria-hidden`:
   - **Projection lines** for the 16 index crossings: 1 px ink at `left: <left>%`, from `top: 0` to `top: (220 − T) / 160 × 100%`, ending in a 4 px ink dot. They rest at opacity 0.35.
-  - **Y labels** (`text-xs` map `num` muted, 4 px above their gridline, bg knockout). md+: `200°`, `160°`, `120°`, `80°` (every other gridline), right-aligned 8 px from the right edge. sm: only `160°` and `120°`, left-aligned at `left: 40px`, which is clear of the charge fall and the TP dot. At sm the right edge belongs to the cooling curve and the DROP label.
+  - **Y labels**, the same at **every breakpoint**: only `160°` and `120°` (`text-xs` map `num` muted, 4 px above their gridline, bg knockout). They are left-aligned at `left: calc(5.74% + 12px)`, i.e. 12 px right of the last charge-fall projection line (100° crossing at t = 41.3 s, `strip.crossings`). This keeps them in the empty space above the TP valley:
+    - The curve there sits at 75–83 % (88–100 °C), well below the 120° label (about 58–62 %).
+    - The label run (about 28 px wide) ends before the next projection line (the 100° rise at t = 129.7 s, 18 %) at every width from 375 to 1440. For example, labels sit at 33–61 px at 375 against a projection line at 67 px, and at 85–113 px at 1280 against one at 230 px.
+    - Nothing sits on the right edge any more. That side belongs to the cooling curve, the DROP label and (md+) the Cooling label.
+    - 200° and 80° stay unlabelled: they would collide with the CHARGE and TP labels, and the waypoints carry their own temperatures.
   - **Event waypoints** from `profile.events`: an 8 px accent dot with a 2 px bg ring, a 1 px ink leader, and a `text-xs` map label. The label is the event name `roast-curve.chart.events[].name` in 600 at md+ (the codes `CHG/TP/DE/FC/DROP` at sm), then `time` · `temp` in 500 `num`. Placement:
     - CHARGE (`0% / 12.5%`): label at the page margin, `top: 2%`, no leader. Its `temp` is empty in copy, so show the time only.
     - TP (`9% / 82.5%`): label centred under the dot, leader 12 px down.
@@ -244,7 +248,7 @@ Mobile (375):
 - `roast-curve.annotations[].title` **16** ✓ · `.body` **140** ✓
 - `roast-curve.card.title` **22** ✓ · `.caption` **110** ✓ · `.lines[0..5]` **44** each ✓ · `.image_alt` **125** ✓
 
-**Mobile changes:** there's no sticky stage; RC-sm plays once when the stage comes into view. The curve card shrinks to cols 1–2, with its caption beside it in cols 3–4. Event labels switch to codes. Phase names move under the bar. The y axis keeps only 160° and 120°, at the left. FC's label goes above-left, DROP's label moves to the label lane under the strip, and the in-plot Cooling label is dropped. Index tick labels are hidden, and the time axis steps by 2 minutes. The narration line stays (1–2 lines). The notes stack.
+**Mobile changes:** there's no sticky stage; RC-sm plays once when the stage comes into view. The curve card shrinks to cols 1–2, with its caption beside it in cols 3–4. Event labels switch to codes. Phase names move under the bar. FC's label goes above-left, DROP's label moves to the label lane under the strip, and the in-plot Cooling label is dropped. Index tick labels are hidden, and the time axis steps by 2 minutes. The narration line stays (1–2 lines). The notes stack.
 
 ---
 
@@ -340,6 +344,7 @@ Mobile (375):
 
 **Mobile / md changes:**
 - A **comparison plate** comes first: a surface box with a 1 px line and 16 px padding, holding a 12rem chart with the three minis overlaid on the same domain.
+  - **Y-label gutter:** the plot box (minis + gridlines) is inset `margin-left: 2.5rem` inside the chart. Gridlines `200°` / `150°` / `100°` sit at `top: 12.5% / 43.75% / 75%` of the plot box and start at its left edge, not in the gutter. Their labels (`text-xs` map `num` muted) are right-aligned in the gutter, 6 px left of the plot, vertically centred on their line (`translate: 0 -50%`). The charge fall starts at the plot's left edge (x = 0), so no curve ever enters the gutter or crosses a label.
   - Curve styles: 214 accent 2.25 px; 213 ink 1.5 px; 212 muted 1.5 px dashed 4 3. Override them with scoped `.plate-<batch> .nb-roast` rules.
   - The chart leaves a 5.5rem right gutter for direct labels `213 Huila`, `214 Guji`, `212 Nyeri` (`text-xs` map `num`), ordered by drop temperature from top to bottom, 18 px apart. Each label connects to its drop point with a 1 px leader.
   - Below the chart, **one** roast-level scale carries all three ▼ markers, each labelled with its batch number, then `roasts.scale_note`.
