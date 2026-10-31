@@ -868,7 +868,7 @@
   overflow-x: clip;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto auto auto var(--strip-h) 15rem auto;
+  grid-template-rows: auto auto auto var(--strip-h) calc(15rem + 20px) auto;
   padding-block: 48px 24px;
 }
 @media (min-width: 768px) {
@@ -1013,9 +1013,20 @@
 }
 .profile {
   grid-area: 5 / 1;
+  /* sm: a 20px label lane above the plot (R1-04); overlays are positioned in the plot box. */
+  padding-top: 20px;
+}
+.plot {
+  position: relative;
+  height: 100%;
+}
+@media (min-width: 768px) {
+  .profile {
+    padding-top: 0;
+  }
 }
 .strip > svg,
-.profile > svg,
+.plot > svg,
 .layer > svg {
   position: absolute;
   inset: 0;
@@ -1108,7 +1119,7 @@
 }
 .y-label {
   position: absolute;
-  right: 8px;
+  left: 40px;
   translate: 0 calc(-100% - 4px);
   padding-inline: 2px;
   background: var(--color-bg);
@@ -1207,23 +1218,85 @@
   top: 6px;
   height: 24px;
 }
-.wp-fc .wp-label {
-  top: 30px;
-  left: -0.5px;
-  padding: 1px 4px;
-  background: var(--color-ground);
-}
 .wp-drop .wp-label {
+  display: none;
   right: 13px;
   bottom: 15px;
   padding: 1px 4px;
   background: var(--color-bg);
 }
+/* sm FC: above-left of its dot, no leader, knockout (R1-04). */
+.wp-fc .wp-leader {
+  display: none;
+}
+.wp-fc .wp-label {
+  right: 6px;
+  bottom: 8px;
+  padding: 1px 4px;
+  background: var(--color-bg);
+}
+@media (min-width: 768px) {
+  .y-label {
+    left: auto;
+    right: 8px;
+  }
+  .wp-drop .wp-label {
+    display: block;
+  }
+  .wp-fc .wp-leader {
+    display: block;
+  }
+  .wp-fc .wp-label {
+    right: auto;
+    bottom: auto;
+    top: 30px;
+    left: -0.5px;
+    background: var(--color-ground);
+  }
+}
+.drop-lane {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.drop-lane-leader {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  margin-left: -0.5px;
+  background: var(--color-ink);
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform var(--duration-base) var(--ease-pin);
+}
+.drop-lane-label {
+  position: absolute;
+  right: 8px;
+  bottom: 100%;
+  padding: 1px 4px;
+  background: var(--color-bg);
+  white-space: nowrap;
+  font-size: var(--text-xs);
+  line-height: 1.3;
+  font-stretch: 75%;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--color-ink);
+  opacity: 0;
+  transition: opacity var(--duration-base) var(--ease-pin) 80ms;
+}
+.drop-lane[data-on] .drop-lane-leader {
+  transform: none;
+}
+.drop-lane[data-on] .drop-lane-label {
+  opacity: 1;
+}
 .cool-label {
   position: absolute;
-  left: 93%;
-  top: 46%;
-  display: flex;
+  left: 90%;
+  top: 70%;
+  padding: 1px 4px 1px 0;
+  background: var(--color-bg);
   align-items: center;
   gap: 4px;
   font-size: var(--text-xs);
@@ -1237,13 +1310,7 @@
   height: 2px;
   background: repeating-linear-gradient(90deg, var(--color-lake) 0 4px, transparent 4px 7px);
 }
-@media (max-width: 767px) {
-  .cool-label {
-    left: auto;
-    right: 4px;
-    top: 36%;
-  }
-}
+
 .cursor-span {
   grid-row: 4 / 6;
   grid-column: 1;
@@ -1347,16 +1414,32 @@
   .roast-grid {
     display: grid;
     grid-template-columns: repeat(12, minmax(0, 1fr));
-    grid-template-rows: repeat(8, auto);
+    grid-template-rows: repeat(13, auto);
     column-gap: var(--spacing-gutter);
-    row-gap: 8px;
+    row-gap: 0;
   }
+  /* R1-06: every field is its own subgrid row (13), so a wrap in one card moves that row in all three. */
   .roast-card {
     grid-column: 1 / span 4;
-    grid-row: 1 / span 8;
+    grid-row: 1 / span 13;
     display: grid;
     grid-template-rows: subgrid;
-    gap: 8px;
+    row-gap: 0;
+  }
+  .roast-card > * + * {
+    margin-top: 8px;
+  }
+  .roast-card > .roast-mini {
+    margin-top: 20px;
+  }
+  .roast-dl {
+    display: contents;
+  }
+  .roast-dl > div:first-child {
+    margin-top: 24px;
+  }
+  .roast-card > :last-child {
+    margin-top: 0;
   }
   .roast-card:nth-of-type(2) {
     grid-column: 5 / span 4;
@@ -1371,7 +1454,7 @@
     grid-column: 1 / -1;
     grid-row: 4;
     height: 7.5rem;
-    margin-top: 12px;
+    margin-top: 20px;
     pointer-events: none;
     --bleed: max(var(--spacing-margin), calc((100vw - var(--container-page)) / 2 + var(--spacing-margin)));
     margin-inline: calc(-1 * var(--bleed));
@@ -1921,20 +2004,12 @@
   }
 }
 .stat-leader {
-  flex: 1;
-  height: 1px;
-  margin-bottom: 0.5em;
+  display: block;
+  height: 6px;
+  margin-top: 12px;
   border-top: 1px solid var(--color-accent);
+  border-right: 1px solid var(--color-accent);
   transform-origin: left;
-}
-@media (min-width: 1024px) {
-  .stat-leader {
-    align-self: center;
-    height: 24px;
-    margin-bottom: 0;
-    translate: 0 12px;
-    border-right: 1px solid var(--color-accent);
-  }
 }
 [data-draw] .stat-leader {
   transform: scaleX(0);
@@ -1952,10 +2027,18 @@
   line-height: 1;
   color: var(--color-accent);
 }
+/* R1-05: the panel spans both rows; any extra height goes to row 2 (included → closing), so
+   "Every delivery includes" stays 40px under the lede and only the closing line bottom-aligns. */
+@media (min-width: 1024px) {
+  .subscribe-grid {
+    grid-template-rows: auto 1fr;
+  }
+}
 .subscribe-panel {
   margin-inline: calc(-1 * var(--spacing-margin));
 }
 .form-panel {
+  scroll-margin-top: 80px;
   padding: 20px var(--spacing-margin);
   background: var(--color-surface);
   border-block: 1px solid var(--color-line);
@@ -2153,6 +2236,40 @@ fieldset:disabled .radio-card {
 }
 
 /* ── 404 ── */
+/* R1-09: title, body and link stacked in the clearing, never beside it. At lg the block sits in
+   the upper half of the clearing, ending 24px above the × (clearing centre, 43% down the terrain),
+   so neither a contour nor the marker runs under the text. */
 .hero-404 .hero-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   padding-bottom: 24px;
+}
+@media (min-width: 1024px) {
+  .hero-404 .hero-copy {
+    padding-bottom: 0;
+    bottom: calc(max(100cqw, var(--hero-h) * 1.6) / 1.6 * 0.57 + 24px);
+  }
+}
+
+/* R1-01: skip style, layout and paint for below-fold sections until they near the viewport.
+   `auto` remembers each section's real size once it has rendered. Not on #roast-curve: the sticky
+   stage keeps real layout (measured: no Lighthouse gain there). */
+#roasts,
+#how-it-works,
+#proof,
+#subscribe {
+  content-visibility: auto;
+}
+#roasts {
+  contain-intrinsic-size: auto 1800px;
+}
+#how-it-works {
+  contain-intrinsic-size: auto 1400px;
+}
+#proof {
+  contain-intrinsic-size: auto 1300px;
+}
+#subscribe {
+  contain-intrinsic-size: auto 1500px;
 }

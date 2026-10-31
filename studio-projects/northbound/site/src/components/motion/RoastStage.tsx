@@ -10,9 +10,7 @@ import {
   useTransform,
 } from "motion/react";
 import { useReducedMotionSafe } from "@/lib/use-reduced-motion";
-import { useEffect, useRef, useState } from "react";
-import { stripInner, stripLine } from "@/assets/strip";
-import { profileStyle, profileGround, profileGrid, profilePhaseRules, profileRoast, profileCooling } from "@/assets/profile";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Crossing, Phase, ProfileEvent } from "@/lib/data";
 import { readoutSpring } from "@/lib/motion";
 
@@ -36,6 +34,8 @@ export type RoastStageProps = {
   events: ProfileEvent[];
   phases: Phase[];
   bt: number[];
+  /** Static SVG layers rendered on the server (strings stay out of this client bundle). */
+  layers: { strip: ReactNode; stripLine: ReactNode; profileBase: ReactNode; curve: ReactNode; cooling: ReactNode };
   labels: { time: string; temp: string; A: string; A2: string; tEvent: string; tTime: string; tTemp: string; tNote: string };
 };
 
@@ -56,7 +56,7 @@ const FINAL = 0.92; // RC10
 const SM_P = [0, 0.1, 0.3, 0.72, 0.8, 0.92, 1];
 const SM_T = [0, 0.4, 1.0, 3.4, 3.8, 4.6, 4.8];
 
-export function RoastStage({ chart, dateLine, imageAlt, crossings, events, phases, bt, labels }: RoastStageProps) {
+export function RoastStage({ chart, dateLine, imageAlt, crossings, events, phases, bt, layers, labels }: RoastStageProps) {
   const track = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotionSafe();
@@ -135,6 +135,15 @@ export function RoastStage({ chart, dateLine, imageAlt, crossings, events, phase
   };
   useMotionValueEvent(p, "change", sync);
 
+  // Narration follows the same spring-smoothed head as the readout, so the line never runs
+  // ahead of the numbers (R1-07).
+  const [narrOn, setNarrOn] = useState(0);
+  const eventsPassed = (v: number) => {
+    const head = headOf(v) * T_END;
+    return v < 0.3 ? 0 : events.reduce((n, e) => (head >= e.t - 0.5 ? n + 1 : n), 0);
+  };
+  useMotionValueEvent(sp, "change", (v) => setNarrOn(eventsPassed(v)));
+
   // ── Continuous marks ──
   const stripClip = useTransform(p, (v) => `inset(0 ${(1 - clamp01(v / 0.1)) * 100}% 0 0)`);
   const aOpacity = useTransform(p, [0, 0.02], [0, 1]);
@@ -162,7 +171,7 @@ export function RoastStage({ chart, dateLine, imageAlt, crossings, events, phase
   ];
 
   // Narration: the last event the pen has passed; the DTR definition at the end.
-  const narr = final ? -2 : eventsOn - 1;
+  const narr = final ? -2 : narrOn - 1;
   const drop = chart.events[chart.events.length - 1];
   const dropTemp = `${bt[T_DROP].toFixed(1)}°`;
   const shortLabel = `${chart.title.split(" · ")[0]} · ${dateLine.match(/\d+ \w{3}/)?.[0] ?? ""}`;
@@ -248,9 +257,9 @@ export function RoastStage({ chart, dateLine, imageAlt, crossings, events, phase
 
           {/* Row 4: the strip (plan view along A–A′) */}
           <div className="strip" aria-hidden="true">
-            <svg viewBox="0 0 720 72.9" preserveAspectRatio="none" focusable="false" dangerouslySetInnerHTML={{ __html: stripInner }} />
+            {layers.strip}
             <m.div className="layer rc-anim" style={{ clipPath: stripClip }}>
-              <svg viewBox="0 0 720 72.9" preserveAspectRatio="none" focusable="false" dangerouslySetInnerHTML={{ __html: stripLine }} />
+              {layers.stripLine}
             </m.div>
             {crossings.map((c, i) => (
               <span
@@ -276,18 +285,13 @@ export function RoastStage({ chart, dateLine, imageAlt, crossings, events, phase
 
           {/* Row 5: the profile, which is batch 214's roast curve */}
           <div className="profile" role="img" aria-label={imageAlt}>
-            <svg
-              viewBox="0 0 720 160"
-              preserveAspectRatio="none"
-              aria-hidden="true"
-              focusable="false"
-              dangerouslySetInnerHTML={{ __html: profileStyle + profileGrid + profilePhaseRules }}
-            />
+           <div className="plot">
+            {layers.profileBase}
             <m.div className="layer rc-anim" style={{ clipPath: curveClip }} aria-hidden="true">
-              <svg viewBox="0 0 720 160" preserveAspectRatio="none" focusable="false" dangerouslySetInnerHTML={{ __html: profileGround + profileRoast }} />
+              {layers.curve}
             </m.div>
             <m.div className="layer rc-anim" style={{ clipPath: coolClip }} aria-hidden="true">
-              <svg viewBox="0 0 720 160" preserveAspectRatio="none" focusable="false" dangerouslySetInnerHTML={{ __html: profileCooling }} />
+              {layers.cooling}
             </m.div>
 
             <div aria-hidden="true">
@@ -302,8 +306,9 @@ export function RoastStage({ chart, dateLine, imageAlt, crossings, events, phase
                 ))}
               </m.div>
 
+              {/* md+: 200/160/120/80 at the right edge. sm: 160 and 120 at the left (R1-04). */}
               {yLabels.map((T) => (
-                <span key={T} className={`y-label num${T === 160 || T === 80 ? " hidden md:block" : ""}`} style={{ top: `${yPct(T)}%` }}>
+                <span key={T} className={`y-label num${T === 200 || T === 80 ? " hidden md:block" : ""}`} style={{ top: `${yPct(T)}%` }}>
                   {T}°
                 </span>
               ))}
@@ -331,7 +336,24 @@ export function RoastStage({ chart, dateLine, imageAlt, crossings, events, phase
                 );
               })}
 
-              <m.span className="cool-label rc-anim" style={{ opacity: coolOpacity }}>
+              {/* sm: DROP's label sits in the 20px lane under the strip, with a leader down to the ▲. */}
+              {(() => {
+                const drop = events[events.length - 1];
+                const c = chart.events[events.length - 1];
+                return (
+                  <div className="drop-lane md:hidden" data-on={eventsOn >= events.length ? "" : undefined}>
+                    <span className="drop-lane-leader" style={{ left: `${drop.left}%`, height: `calc(${drop.top}% - 6px)` }} />
+                    <span className="drop-lane-label">
+                      <span className="font-semibold">{drop.code}</span>{" "}
+                      <span className="num">
+                        {c.time} · {c.temp}
+                      </span>
+                    </span>
+                  </div>
+                );
+              })()}
+
+              <m.span className="cool-label hidden rc-anim md:flex" style={{ opacity: coolOpacity }}>
                 <span className="cool-rule" />
                 {chart.cooling_label}
               </m.span>
@@ -342,6 +364,7 @@ export function RoastStage({ chart, dateLine, imageAlt, crossings, events, phase
                 </m.div>
               )}
             </div>
+           </div>
           </div>
 
           {/* Plumb cursor: one ink hairline through strip and profile (RC5) */}

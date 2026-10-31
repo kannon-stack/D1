@@ -7,7 +7,7 @@ const s = copy.subscribe;
 export function Subscribe() {
   return (
     <section id="subscribe" aria-labelledby="subscribe-title" className="anchor py-section-md">
-      <div className="mx-auto grid max-w-page grid-cols-4 gap-x-gutter px-margin md:grid-cols-8 lg:grid-cols-12">
+      <div className="subscribe-grid mx-auto grid max-w-page grid-cols-4 gap-x-gutter px-margin md:grid-cols-8 lg:grid-cols-12">
         <SectionHead
           id="subscribe-title"
           eyebrow={s.eyebrow}

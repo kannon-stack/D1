@@ -1,11 +1,22 @@
 import { copy, specCopy } from "@/content/copy";
 import { miniInner } from "@/assets/minis";
+import { stripInner, stripLine } from "@/assets/strip";
+import { profileStyle, profileGround, profileGrid, profilePhaseRules, profileRoast, profileCooling } from "@/assets/profile";
 import { data } from "@/lib/data";
 import { SectionHead, wordLines } from "@/components/ui/SectionHead";
 import { RoastStage } from "@/components/motion/RoastStage";
 import { InView } from "@/components/motion/InView";
 
 const rc = copy["roast-curve"];
+
+/** A static, stretched SVG layer (server-rendered; the stage only clips and overlays it). */
+function Layer({ viewBox, html }: { viewBox: string; html: string }) {
+  return (
+    <svg viewBox={viewBox} preserveAspectRatio="none" aria-hidden="true" focusable="false" dangerouslySetInnerHTML={{ __html: html }} />
+  );
+}
+const STRIP = "0 0 720 72.9";
+const PROFILE = "0 0 720 160";
 
 export function RoastCurve() {
   const drop = data.minis.find((mi) => mi.batch === 214)!.drop;
@@ -55,6 +66,13 @@ export function RoastCurve() {
         events={data.profile.events}
         phases={data.profile.phases}
         bt={data.profile.btPerSecond}
+        layers={{
+          strip: <Layer viewBox={STRIP} html={stripInner} />,
+          stripLine: <Layer viewBox={STRIP} html={stripLine} />,
+          profileBase: <Layer viewBox={PROFILE} html={profileStyle + profileGrid + profilePhaseRules} />,
+          curve: <Layer viewBox={PROFILE} html={profileGround + profileRoast} />,
+          cooling: <Layer viewBox={PROFILE} html={profileCooling} />,
+        }}
         labels={{
           time: specCopy.readoutTime,
           temp: specCopy.readoutTemp,

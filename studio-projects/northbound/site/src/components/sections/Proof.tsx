@@ -40,11 +40,10 @@ export function Proof() {
           </div>
 
           <InView className="mt-12 lg:mt-10" amount={0.5}>
-            <div className="flex items-end gap-4">
-              <p className="font-display width-wide num shrink-0 text-4xl font-light xl:text-5xl">{pr.stat.value}</p>
-              <span className="stat-leader" aria-hidden="true" />
-            </div>
-            <p className="mt-3 max-w-narrow text-sm text-ink-soft lg:mt-8">{pr.stat.label}</p>
+            <p className="font-display width-wide num text-4xl font-light xl:text-5xl">{pr.stat.value}</p>
+            {/* R1-03: the leader runs under the value, full column width, with a 6px end tick. */}
+            <span className="stat-leader" aria-hidden="true" />
+            <p className="mt-1.5 max-w-narrow text-sm text-ink-soft">{pr.stat.label}</p>
           </InView>
         </div>
       </div>

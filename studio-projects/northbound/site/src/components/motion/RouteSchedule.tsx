@@ -266,6 +266,13 @@ export function RouteSchedule({ copy: c, cta }: { copy: RouteCopy; cta: string }
           {c.legend.skipped}
         </li>
       </ul>
+      {/* R1-08: explain the asterisk whenever a visible stop is shifted for the holiday. */}
+      {stops.some((w) => w.holiday) && (
+        <p className="mt-2 hidden text-xs text-muted md:block">
+          <span aria-hidden="true">* </span>
+          {c.holiday_note}
+        </p>
+      )}
 
       <div className="mt-5 border-t border-line pt-5">
         {empty ? (

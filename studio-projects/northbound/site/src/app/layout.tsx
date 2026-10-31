@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Archivo } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { MotionProvider } from "@/components/motion/MotionProvider";
 import { Nav } from "@/components/ui/Nav";
@@ -7,11 +7,16 @@ import { Footer } from "@/components/sections/Footer";
 import { copy } from "@/content/copy";
 import { site } from "@/content/metadata";
 
-// One family, three widths (type.md). Both styles are above the fold, so both preload.
-const archivo = Archivo({
-  subsets: ["latin"],
-  style: ["normal", "italic"],
-  axes: ["wdth"],
+// One family, three widths (type.md): Archivo's variable wght + wdth axes, normal and italic, both
+// preloaded. The files are Google Fonts' own Archivo, requested with `text=` so they carry only the
+// glyphs this page sets (all printable ASCII + the copy's punctuation, units and arrows): 134 KB
+// instead of 192 KB, which is the largest single cost in mobile LCP (Critic R1-01).
+const archivo = localFont({
+  src: [
+    { path: "./fonts/archivo-normal.woff2", style: "normal", weight: "100 900" },
+    { path: "./fonts/archivo-italic.woff2", style: "italic", weight: "100 900" },
+  ],
+  declarations: [{ prop: "font-stretch", value: "62% 125%" }],
   variable: "--font-archivo",
   display: "swap",
 });

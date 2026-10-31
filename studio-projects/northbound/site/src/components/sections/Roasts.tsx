@@ -195,7 +195,18 @@ export function Roasts() {
                     </div>
                     <div>
                       <dt>{L.notes}</dt>
-                      <dd>{it.notes.join(" · ")}</dd>
+                      <dd>
+                        {/* Lines break after a separator, never before one (R1-06). */}
+                        {it.notes.map((n, j) => (
+                          <span key={n}>
+                            <span className="whitespace-nowrap">
+                              {n}
+                              {j < it.notes.length - 1 ? " ·" : ""}
+                            </span>
+                            {j < it.notes.length - 1 ? " " : ""}
+                          </span>
+                        ))}
+                      </dd>
                     </div>
                     <div>
                       <dt>{L.brew}</dt>

@@ -46,6 +46,14 @@ type Status = "idle" | "loading" | "error" | "success";
 
 export function SubscribeForm({ s, f }: { s: SubscribeCopy; f: FormCopy }) {
   const reduce = useReducedMotionSafe();
+  const panelRef = useRef<HTMLDivElement>(null);
+  // S3 / R1-02: the success panel is much shorter than the form, so bring it into view first
+  // (smooth only when motion is allowed; scroll-margin-top 80px clears the nav), then focus it.
+  const revealSuccess = (el: HTMLHeadingElement | null) => {
+    if (!el) return;
+    panelRef.current?.scrollIntoView({ block: "start", behavior: reduce ? "auto" : "smooth" });
+    el.focus({ preventScroll: true });
+  };
   const cadence = useCadence();
   const [plan, setPlan] = useState(() => Math.max(0, s.plans.findIndex((p) => p.default)));
   const [style, setStyle] = useState(() => s.styles.find((x) => x.default)?.value ?? s.styles[0].value);
@@ -86,7 +94,7 @@ export function SubscribeForm({ s, f }: { s: SubscribeCopy; f: FormCopy }) {
   const inT = reduce ? { duration: 0 } : { duration: duration.base, ease: ease.pin };
 
   return (
-    <div className="form-panel">
+    <div className="form-panel" ref={panelRef}>
       <AnimatePresence mode="wait" initial={false}>
         {status === "success" ? (
           <m.div key="success" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={inT}>
@@ -99,7 +107,7 @@ export function SubscribeForm({ s, f }: { s: SubscribeCopy; f: FormCopy }) {
             >
               {"▲"}
             </m.span>
-            <h3 ref={(el) => el?.focus({ preventScroll: true })} tabIndex={-1} className="mt-3 font-display width-wide text-2xl font-normal">
+            <h3 ref={revealSuccess} tabIndex={-1} className="mt-3 font-display width-wide text-2xl font-normal">
               {f.success_title}
             </h3>
             <p className="mt-4 max-w-prose text-base text-ink-soft">{fill(f.success, { email: email.trim() })}</p>
