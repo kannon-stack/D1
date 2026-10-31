@@ -1,6 +1,6 @@
 # Metadata: Agkbuilds
 
-**Domain pending (decisions #13).** No website address is known, so this file carries no absolute URL: no `url`, no canonical link, no `og:url`, and no `sameAs`. The Builder reads the site address from `NEXT_PUBLIC_SITE_URL` (decisions #13) and must emit a canonical link, `og:url`, absolute image URLs and a JSON-LD `url` only when that variable is set. Until the domain is supplied, none of them appear in the built HTML. The OG image is still referenced by a relative path.
+**Domain pending (decisions #13).** No website address is known, so this file carries no absolute URL: no `url`, no canonical link, no `og:url`, and no `sameAs`. The Builder reads the site address from `NEXT_PUBLIC_SITE_URL` (decisions #13) and must emit a canonical link, `og:url`, absolute image URLs and a JSON-LD `url` only when that variable is set. Until the domain is supplied, none of them appear in the built HTML. Caution for the Builder: the layout spec's `metadataBase` "with a local fallback" would make Next write an absolute `http://localhost…` address into the `og:image` and `twitter:image` tags of the static export. Set `metadataBase` only when `NEXT_PUBLIC_SITE_URL` exists, and check the built HTML for the string `localhost`.
 
 Primary search intent: **custom software**, with the three supplied kinds (data recovery tools, card games, Discord bots) as supporting terms.
 
@@ -25,7 +25,7 @@ locale: "en_US"
 Notes:
 - `title` is 53 characters and `description` is 133 characters, both inside the limits, and both contain "custom software".
 - The description names only supplied facts: custom software and the three kinds, introduced with "including" so the list is not presented as the full range.
-- OG image text is 7 words. The image should show the headline as outlined letters filling solid on the graphite background with the orange dimension line, using the same type as the page.
+- OG image text is 7 words and is the recommended `hero.headline` (option A) read as one sentence. The image sets it in four lines as in `hero.headline` (lines 1 to 3 in paper, line 4 in orange), with `hero.fig_label` ("Fig. 01 · Custom software") in the dimension line, as `assets/README.md` describes. If the user picks another option, change `image_text`, `image_alt` and the og/twitter titles with it.
 - Favicon and `icon.svg`: the "A" in a dimension bracket from the direction. No text, no alt needed.
 
 ## JSON-LD
@@ -47,16 +47,16 @@ Notes:
 
 Exactly one `h1`, no skipped levels. The footer has no heading; the 404 page has its own `h1` ("Sheet not found.").
 
-- h1: Custom software, drawn to fit. Then built. (the hero headline; the three display lines are one heading, split with line breaks)
+- h1: Custom software, drawn to fit. Then built. (the recommended `hero.headline`; the four display lines are one heading, so join the line spans with a plain space in the DOM so the h1 text reads as one sentence)
   - h2: What we build
     - h3: Data recovery tools
     - h3: Card games
     - h3: Discord bots
   - h2: How we work
-    - h3: Understand
-    - h3: Plan
-    - h3: Build
-    - h3: Hand over
-  - h2: Tell us what to build.
+    - h3: Understand the job
+    - h3: Draw the plan
+    - h3: Build it
+    - h3: Hand it over
+  - h2: Tell us what to build. (`contact.headline`, three display lines, same joining rule)
 
-If the Director confirms a different hero option, the `h1`, `og:title`, `og:image_text` and `og:image_alt` change with it. The `title` and `description` do not.
+If the user picks a different hero option, the `h1`, `og:title`, `og:image_text`, `og:image_alt` and the twitter title change with it. The `title` and `description` do not.

@@ -13,7 +13,7 @@ Brief adjectives: **bold**, **futuristic**, **dependable**. Never: a generic cor
 | Bold | Short declaratives and plain imperatives. Large statements about the work, never about ourselves. | "Tell us what to build." | "We would love to hear from you about your potential project needs." |
 | | | "Custom software, drawn to fit. Then built." | "Custom software that may suit your business." |
 | Dependable | Calm and plain. Says what happens next and never promises what a drawing cannot show. | "Questions come before code." | "Guaranteed delivery, on time and on budget." |
-| | | "Something else in mind? Describe it and we will tell you whether it is a fit." | "We can build anything, however complex." |
+| | | "A drawing comes before the build, and a handover comes after it." | "We can build anything, however complex." |
 
 The futuristic part is not a trait of the words. It lives in the sheet itself: the drawn-then-solid headline, the mono annotations, the precision. The words stay plain so the design can be bold.
 
@@ -26,7 +26,7 @@ Concrete nouns and verbs from a drafting table and a build:
 - software, tool, game, bot, data, files, rules, commands, server, code
 - you, your business, the work you already do, the job
 
-Mono annotations use the drawing-sheet vocabulary: SHEET 1/4, FIG. 01, PARTS LIST, STEP 1/4, DRAWN FOR, NEXT STEP, END OF DRAWING.
+Mono annotations use the drawing-sheet vocabulary: general arrangement, parts list, method, title block, fig., detail, datum, drawn by, end of list.
 
 Primary call to action, identical everywhere: **Start a conversation**.
 
@@ -58,7 +58,8 @@ Everything else on the page is general wording that is true of any custom-softwa
 - **Sentences:** short. Most are 6 to 14 words; a second sentence is allowed when it adds a step or a limit, not a flourish. One idea per sentence.
 - **Contractions:** avoid in headlines and labels. Rare in body copy; the precise voice prefers "we will" and "it is".
 - **Headings:** written in sentence case. The display face (Archivo, wide, 800) sets them in uppercase with CSS, so the source text stays readable for screen readers and for copy and paste. A heading that is a full sentence ends with a full stop; a label heading ("What we build") does not. No exclamation marks anywhere on the page.
-- **Mono annotations:** written in uppercase in the source (they are drawing labels, not sentences) with no end punctuation. Annotations that sit inside the SVG are decorative and `aria-hidden`; real text always repeats the meaning.
-- **Numbers:** numerals only for sheet and step order (1/4, 01) and for the phone number, with hyphens (254-231-1149) and tabular figures. Never a number that implies a claim.
+- **Hero headline:** four short lines, each a beat of the drawing: "Custom / software, / drawn to fit. / Then built." Lines 1 and 2 say what Agkbuilds makes; line 4 is the payoff and fills in orange. No word is longer than nine characters.
+- **Mono annotations:** also written in sentence case, because the `annotate` utility uppercases them. No end punctuation. Annotations that sit inside the SVG are decorative and `aria-hidden`; real text always repeats the meaning.
+- **Numbers:** numerals only for sheet and step order (computed by the Builder, not written in the copy) and for the phone number, with hyphens (254-231-1149) and tabular figures. Words in prose ("four passes"). Never a number that implies a claim.
 - **Punctuation habits:** the full stop is the line end of the sheet. Colons introduce a list or a definition. Semicolons at most once on the page.
 - **Capitalisation:** "Agkbuilds" in running text. "AGK" with "builds" only in the wordmark.
