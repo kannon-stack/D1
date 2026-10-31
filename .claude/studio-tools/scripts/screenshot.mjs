@@ -68,6 +68,15 @@ async function shot(page, name, options = {}) {
   manifest.files.push(path.relative(out, file));
 }
 
+// Chromium doesn't paint off-screen `content-visibility: auto` sections in a full-page
+// capture, so tiles show blank bands. Call this after revealAll() has scrolled through the
+// page, and only for full-page/tile shots: fold shots and scroll frames keep the page as a
+// visitor sees it.
+async function showSkippedContent(page) {
+  await page.addStyleTag({ content: "*,*::before,*::after{content-visibility:visible !important}" });
+  await settle(page, 300);
+}
+
 try {
   for (const scheme of schemes) {
     for (const width of widths) {
@@ -77,7 +86,7 @@ try {
 
       if (!foldOnly) {
         await revealAll(page);
-        await settle(page, 300);
+        await showSkippedContent(page);
         await shot(page, `full-${width}-${scheme}.png`, { fullPage: true });
         // Image viewers shrink very tall shots; tiles keep detail legible.
         if (doTiles) {
@@ -105,12 +114,22 @@ try {
     const { context, page } = await newPage(framesWidth, schemes[0]);
     await gotoAndSettle(page, url);
     await page.mouse.move(framesWidth / 2, 300);
-    const max = await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
     for (let i = 0; i < frames; i++) {
+      // Re-measure every time: sections using content-visibility change the page height
+      // as they render, so a height taken at load would leave the last frames short.
+      const max = await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
       const target = Math.round((max * i) / (frames - 1));
       const current = await page.evaluate(() => window.scrollY);
       if (target > current) await page.mouse.wheel(0, target - current);
       await page.waitForTimeout(650);
+      if (i === frames - 1) {
+        for (let k = 0; k < 4; k++) {
+          const rest = await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight - window.scrollY);
+          if (rest <= 2) break;
+          await page.mouse.wheel(0, rest);
+          await page.waitForTimeout(650);
+        }
+      }
       await shot(page, `frames/frame-${String(i + 1).padStart(2, "0")}.png`);
     }
     await context.close();
@@ -121,6 +140,8 @@ try {
     const { context, page } = await newPage(1280, schemes[0], { reducedMotion: "reduce" });
     await gotoAndSettle(page, url);
     await shot(page, `reduced-1280-${schemes[0]}-fold.png`);
+    await revealAll(page);
+    await showSkippedContent(page);
     await shot(page, `reduced-1280-${schemes[0]}-full.png`, { fullPage: true });
     await context.close();
   }
