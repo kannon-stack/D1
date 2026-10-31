@@ -1,0 +1,1211 @@
+@import "tailwindcss";
+
+/* ── tokens: studio/design/tokens.css, unchanged except `@theme {` → `@theme static {` ── */
+/*
+ * Design tokens: Agkbuilds · direction "A · Working Drawing"
+ * The Builder pastes this file into src/app/globals.css directly after
+ * `@import "tailwindcss";`
+ * Verify with: node .claude/studio-tools/scripts/contrast.mjs studio-projects/agkbuilds/studio/design/tokens.css
+ *
+ * Palette story: a drawing sheet. Graphite ground, paper ink, pencil for notes,
+ * faint guide lines for the grid, and ONE signal-orange accent that marks only
+ * what is "built": the CTA, the last headline line once it fills, the active
+ * process step, focus and selection. Dark (graphite sheet) is the home look;
+ * light is drafting film with graphite ink, designed on its own terms (the
+ * orange is deeper and redder so it holds 4.5:1 as text).
+ *
+ * The @theme block below holds the LIGHT values (Tailwind needs one default);
+ * the dark override follows prefers-color-scheme. There is no manual toggle.
+ */
+
+@theme static {
+  /* ── Color: light, "drafting film" (OKLCH) ─────────────── */
+  --color-bg: oklch(0.965 0.007 90); /* drafting film */
+  --color-surface: oklch(0.99 0.004 90); /* title-block paper, copy-button fill */
+  --color-surface-2: oklch(0.935 0.009 90); /* hover/pressed fill for small buttons */
+  --color-ink: oklch(0.23 0.014 250); /* graphite: all display + body text */
+  --color-ink-soft: oklch(0.36 0.014 250); /* long body copy, descriptions */
+  --color-muted: oklch(0.48 0.016 250); /* pencil: mono annotations, labels, hints */
+  --color-line: oklch(0.8 0.012 250); /* hairlines: table rules, title-block cells (decorative) */
+  --color-grid: oklch(0.915 0.008 250); /* the visible column guides (decorative, faint by design) */
+  --color-draft: oklch(0.7 0.02 250); /* construction linework: circles, guides, dimension lines */
+  --color-accent: oklch(0.53 0.16 42); /* signal orange, deepened and reddened for film (max in-gamut chroma) */
+  --color-accent-hover: oklch(0.47 0.148 40); /* CTA hover */
+  --color-accent-press: oklch(0.43 0.138 39); /* CTA pressed */
+  --color-accent-ink: oklch(0.99 0.004 90); /* text on accent */
+  --color-focus: var(--color-accent);
+
+  /* Every accent use is possible as TEXT (headline line 4, active step numeral,
+     link hover, "Copied" state), so it is held to 4.5 on every ground, not 3. */
+  /* contrast: accent/bg 4.5 */
+  /* contrast: accent/surface 4.5 */
+  /* contrast: accent/surface-2 4.5 */
+  /* contrast: accent-ink/accent-hover 4.5 */
+  /* contrast: accent-ink/accent-press 4.5 */
+  /* contrast: ink-soft/bg 4.5 */
+  /* contrast: ink-soft/surface 4.5 */
+  /* contrast: ink/surface-2 4.5 */
+  /* contrast: muted/surface-2 4.5 */
+  /* contrast: focus/bg 3 */
+  /* contrast: focus/surface 3 */
+  /* contrast: draft/bg 1.9 */
+
+  /* ── Type scale ─────────────────────────────────────────── */
+  /* type-scale.mjs --base 16:18 --ratio 1.2:1.25 --viewports 360:1440
+     Wide heavy caps (Archivo wdth 125 / wght 800) are ~0.8 em per character, so the
+     scale itself is moderate; the drama is the hero size (--text-hero), 40 → 120 px,
+     which is 2.5× body at 375 and 6.7× body at 1440. Display tokens are only used
+     in UPPERCASE; their tracking is tuned for that (see type.md). */
+  --text-xs: clamp(0.6944rem, 0.6655rem + 0.1286vw, 0.7813rem); /* 11.1 → 12.5px · mono labels */
+  --text-xs--line-height: 1.5;
+  --text-xs--letter-spacing: 0.06em; /* mono caps */
+  --text-sm: clamp(0.8333rem, 0.7986rem + 0.1543vw, 0.9375rem); /* 13.3 → 15px */
+  --text-sm--line-height: 1.55;
+  --text-sm--letter-spacing: 0;
+  --text-base: clamp(1rem, 0.9583rem + 0.1852vw, 1.125rem); /* 16 → 18px */
+  --text-base--line-height: 1.6;
+  --text-base--letter-spacing: 0;
+  --text-lg: clamp(1.2rem, 1.1312rem + 0.3056vw, 1.4063rem); /* 19.2 → 22.5px */
+  --text-lg--line-height: 1.45;
+  --text-lg--letter-spacing: -0.005em;
+  --text-xl: clamp(1.44rem, 1.3341rem + 0.4708vw, 1.7578rem); /* 23 → 28.1px */
+  --text-xl--line-height: 1.1;
+  --text-xl--letter-spacing: -0.005em;
+  --text-2xl: clamp(1.728rem, 1.5716rem + 0.6952vw, 2.1973rem); /* 27.6 → 35.2px */
+  --text-2xl--line-height: 1.05;
+  --text-2xl--letter-spacing: -0.01em;
+  --text-3xl: clamp(2.0736rem, 1.8493rem + 0.997vw, 2.7466rem); /* 33.2 → 43.9px */
+  --text-3xl--line-height: 1;
+  --text-3xl--letter-spacing: -0.01em;
+  --text-4xl: clamp(2.4883rem, 2.1734rem + 1.3999vw, 3.4332rem); /* 39.8 → 54.9px */
+  --text-4xl--line-height: 0.96;
+  --text-4xl--letter-spacing: -0.012em;
+  --text-5xl: clamp(2.986rem, 2.5508rem + 1.9341vw, 4.2915rem); /* 47.8 → 68.7px */
+  --text-5xl--line-height: 0.92;
+  --text-5xl--letter-spacing: -0.015em;
+  /* hero headline only: 40px @375 → 70px @768 → 110px @1280 → 120px @≥1409,
+     capped by 14.5svh on short laptops (1280×720 → 104px) */
+  --text-hero: min(clamp(2.5rem, 0.687rem + 7.735vw, 7.5rem), max(2.5rem, 14.5svh));
+  --text-hero--line-height: 0.88; /* row guides in tokens below depend on this exact value */
+  --text-hero--letter-spacing: -0.01em;
+
+  /* ── Space & layout ─────────────────────────────────────── */
+  --spacing: 0.25rem;
+  --spacing-gutter: clamp(1rem, 0.6667rem + 1.4815vw, 1.5rem); /* 16 → 24px */
+  --spacing-margin: clamp(1rem, 0.171rem + 3.536vw, 4rem); /* side margin: 16 @375 · 30 @768 · 48 @1280 · 64 cap; at ≥1440 the 1280 container centres */
+  --spacing-section-xs: clamp(3rem, 2.5rem + 2.2vw, 4.5rem); /* 48 → 72: inside a run */
+  --spacing-section-sm: clamp(4rem, 3rem + 4.4vw, 7rem); /* 64 → 112 */
+  --spacing-section-md: clamp(6rem, 4.6667rem + 5.9259vw, 10rem); /* 96 → 160 */
+  --spacing-section-lg: clamp(7.5rem, 5rem + 11vw, 15rem); /* 120 → 240: the breath before the title block */
+  --container-page: 80rem; /* 1280 content box (12 col × 24 gutter) */
+  --container-prose: 36rem; /* ≈ 68 ch of Archivo 400 at 18px */
+  --container-narrow: 28rem;
+
+  /* ── Shape & depth ──────────────────────────────────────── */
+  /* A drawing sheet: square corners, no shadows. Depth = hairlines + paper. */
+  --radius-none: 0;
+  --radius-pin: 9999px; /* item balloons and the datum dot only */
+
+  /* ── Easing ─────────────────────────────────────────────── */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-pen: cubic-bezier(0.3, 0, 0.4, 1); /* pen speed: nearly even, settles into the end of a stroke */
+  --ease-fill: cubic-bezier(0.7, 0, 0.2, 1); /* the decisive fill: holds, commits, lands; no overshoot */
+}
+
+/* ── Durations (motion.md). Not a Tailwind namespace: plain custom properties. ── */
+:root {
+  --duration-instant: 120ms;
+  --duration-fast: 200ms;
+  --duration-base: 400ms;
+  --duration-fill: 460ms;
+  --duration-pen: 520ms;
+  --duration-slow: 700ms;
+  --duration-drawing: 900ms;
+
+  /* Hero headline construction guides: cap line and baseline of every row, in em of
+     --text-hero with line-height 0.88. Measured in Chromium on the Archivo wdth125/wght800
+     instance: baseline 0.774em from the row top, cap height 0.703em → cap line at 0.071em. */
+  --hl-cap: 0.071em;
+  --hl-base: 0.774em;
+  --hl-row: 0.88em;
+
+  /* Background layers reused by the fixed sheet guides and the hero's .hl-cover
+     (layout-spec Global + hero). Units (em, cqw) resolve where the layer is USED:
+     --hl-rows on an element whose font-size is --text-hero; --sheet-cols inside
+     div.sheet (container-type: inline-size), with the box's left edge on column 1. */
+  --cols: 4;
+  --hl-rows: linear-gradient(to bottom,
+      transparent calc(var(--hl-cap) - 1px), var(--color-line) calc(var(--hl-cap) - 1px),
+      var(--color-line) var(--hl-cap), transparent var(--hl-cap),
+      transparent var(--hl-base), var(--color-line) var(--hl-base),
+      var(--color-line) calc(var(--hl-base) + 1px), transparent calc(var(--hl-base) + 1px))
+    0 0 / 100% var(--hl-row) repeat-y;
+  --sheet-cols: linear-gradient(90deg, var(--color-grid) 1px, transparent 1px)
+    0 0 / calc((100cqw + var(--spacing-gutter)) / var(--cols)) 100% repeat-x;
+}
+@media (width >= 48rem) {
+  :root {
+    --cols: 8;
+  }
+}
+@media (width >= 64rem) {
+  :root {
+    --cols: 12;
+  }
+}
+
+/* Fonts come from next/font CSS variables set on <html>, so `inline` is required.
+   One family (Archivo) as two static instances + JetBrains Mono for annotations. */
+@theme inline {
+  --font-display: var(--font-archivo-wide), "Archivo", "Arial Black", Arial, sans-serif;
+  --font-text: var(--font-archivo), "Archivo", ui-sans-serif, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
+@utility num {
+  font-variant-numeric: tabular-nums; /* phone number, sheet numbers, item numbers */
+}
+@utility annotate {
+  /* the drafting hand: every mono label on the page */
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
+  letter-spacing: var(--text-xs--letter-spacing);
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Color: dark, "graphite sheet" (home look). Designed, not inverted ──
+   Ground is a cool blue-graphite, never black; ink is warm paper; the orange is
+   lighter and yellower (signal, not rust) and takes graphite text; surfaces are
+   raised by lightness, never by shadow; guides are barely-there. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: oklch(0.19 0.012 250); /* graphite */
+    --color-surface: oklch(0.225 0.014 250); /* title-block paper */
+    --color-surface-2: oklch(0.26 0.016 250);
+    --color-ink: oklch(0.95 0.006 90); /* paper */
+    --color-ink-soft: oklch(0.86 0.008 90);
+    --color-muted: oklch(0.77 0.014 250); /* pencil (lifted so 11–12px mono labels stay crisp) */
+    --color-line: oklch(0.36 0.02 250); /* guide */
+    --color-grid: oklch(0.245 0.016 250);
+    --color-draft: oklch(0.45 0.028 250);
+    --color-accent: oklch(0.72 0.18 45); /* signal orange */
+    --color-accent-hover: oklch(0.78 0.14 52);
+    --color-accent-press: oklch(0.68 0.17 44);
+    --color-accent-ink: oklch(0.19 0.012 250); /* graphite on orange */
+  }
+}
+
+/* ── Base details every page in this direction uses ───── */
+@layer base {
+  html {
+    color-scheme: light dark;
+    background: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+  ::selection {
+    background: var(--color-accent);
+    color: var(--color-accent-ink);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 3px;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  p,
+  li,
+  dd {
+    text-wrap: pretty;
+  }
+}
+/* ── end tokens ───────────────────────────────────────────────── */
+
+/* ════════════════════════════════════════════════════════════════
+   Base (from nextjs-craft templates/globals.css, adapted)
+   ════════════════════════════════════════════════════════════════ */
+@layer base {
+  html,
+  body {
+    overflow-x: clip;
+  }
+  body {
+    min-height: 100dvh;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  :focus-visible {
+    transition: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+/* Anchors (layout-spec Global): the nav is static, so sections land 24 px under the top. */
+#top,
+#build,
+#process,
+#contact,
+#main {
+  scroll-margin-top: 24px;
+}
+
+/* Skip link: visually hidden until focused, then fixed top-left 12 px. */
+.skip-link {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.skip-link:focus-visible,
+.skip-link:focus {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 100;
+  width: auto;
+  height: auto;
+  clip-path: none;
+  padding: 10px 16px;
+  background: var(--color-ink);
+  color: var(--color-bg);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   The sheet: container, grid and the visible column guides
+   ════════════════════════════════════════════════════════════════ */
+.wrap {
+  margin-inline: auto;
+  max-width: calc(var(--container-page) + 2 * var(--spacing-margin));
+  padding-inline: var(--spacing-margin);
+}
+.sheet {
+  container-type: inline-size;
+  position: relative;
+}
+.site-layer {
+  position: relative;
+  z-index: 1;
+}
+/* Absolute over the whole document, not fixed: the guides are full-height vertical hairlines, so
+   they look identical, and a fixed (composited) layer under the page would force the header, main
+   and footer into page-sized composited layers (measured: 1–3 s raster stalls on mobile Lighthouse). */
+body {
+  position: relative;
+}
+.sheet-guides {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.sheet-guides .wrap,
+.sheet-guides .sheet {
+  height: 100%;
+}
+.sheet-guides .sheet::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: calc(100cqw + var(--spacing-gutter) + 1px);
+  background: var(--sheet-cols);
+}
+
+/* Sheet header rule (top of build, process, contact). */
+.sheet-rule {
+  height: 1px;
+  background: var(--color-line);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Wordmark: AGK + the CSS dimension bracket ├─ BUILDS ─┤
+   ════════════════════════════════════════════════════════════════ */
+.wordmark {
+  display: inline-flex;
+  flex-direction: column;
+  width: max-content;
+  color: var(--color-ink);
+}
+.wordmark-agk {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  /* the bracket must be as wide as the glyphs, not their trailing tracking */
+  margin-right: -0.02em;
+}
+.wordmark-nav .wordmark-agk {
+  font-size: 22px;
+}
+.bracket {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin-top: 4px;
+  color: var(--color-muted);
+}
+.bracket-tick {
+  width: 1px;
+  height: 7px;
+  background: currentColor;
+  flex: none;
+}
+.bracket-line {
+  flex: 1;
+  height: 1px;
+  background: currentColor;
+}
+.bracket-word {
+  padding-inline: 6px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1;
+  margin-right: -0.12em;
+}
+.wordmark-nav .bracket-word {
+  font-size: 10px;
+}
+.wordmark-footer .bracket-word {
+  font-size: var(--text-xs);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Links and buttons
+   ════════════════════════════════════════════════════════════════ */
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--color-ink-soft);
+  text-decoration-line: underline;
+  text-decoration-color: transparent;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  transition:
+    color var(--duration-instant) var(--ease-out-expo),
+    text-decoration-color var(--duration-instant) var(--ease-out-expo);
+}
+.nav-link:hover {
+  color: var(--color-ink);
+  text-decoration-color: currentColor;
+}
+.nav-link:active {
+  transform: translateY(1px);
+}
+
+.text-link {
+  color: var(--color-ink);
+  text-decoration-line: underline;
+  text-decoration-color: transparent;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  transition: text-decoration-color var(--duration-instant) var(--ease-out-expo);
+}
+.text-link:hover {
+  text-decoration-color: currentColor;
+}
+.text-link:active {
+  transform: translateY(1px);
+}
+
+/* The phone value: always underlined, 2 px on hover; a 44 px tall hit area (like the copy buttons). */
+.phone-link {
+  position: relative;
+  color: var(--color-ink);
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+.phone-link::before {
+  content: "";
+  position: absolute;
+  inset: -9px -4px;
+}
+.phone-link:hover {
+  text-decoration-thickness: 2px;
+}
+.phone-link:active {
+  transform: translateY(1px);
+}
+
+/* The one button style (primary CTA), used twice. */
+.btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-width: 280px;
+  height: 56px;
+  padding-inline: 20px;
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+  font-family: var(--font-text);
+  font-size: var(--text-base);
+  line-height: 1.2;
+  font-weight: 600;
+  transition: background-color var(--duration-instant) var(--ease-out-expo);
+}
+@media (width >= 64rem) {
+  .btn {
+    height: 60px;
+  }
+}
+.btn:hover {
+  background: var(--color-accent-hover);
+}
+.btn:active {
+  background: var(--color-accent-press);
+  transform: translateY(1px);
+}
+.btn-label,
+.btn-arrow {
+  position: relative;
+  z-index: 1;
+}
+.btn-arrow {
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .btn-arrow {
+    transition: transform var(--duration-fast) var(--ease-out-expo);
+  }
+  .btn:hover .btn-arrow {
+    transform: translateX(4px);
+  }
+}
+
+/* Copy buttons (contact). 32 px tall with a 44 × 44 hit area. */
+.copy-btn {
+  position: relative;
+  height: 32px;
+  padding-inline: 12px;
+  border: 1px solid var(--color-line);
+  background: transparent;
+  color: var(--color-ink);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-instant) var(--ease-out-expo),
+    border-color var(--duration-instant) var(--ease-out-expo);
+}
+.copy-btn::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+}
+.copy-btn:hover {
+  background: var(--color-surface-2);
+  border-color: var(--color-ink);
+}
+.copy-btn:active {
+  transform: translateY(1px);
+}
+.copy-btn[data-state="copied"] {
+  color: var(--color-accent);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Hero: the plan → built headline
+   ════════════════════════════════════════════════════════════════ */
+.hero {
+  position: relative;
+  overflow-x: clip;
+}
+.hl-block {
+  position: relative;
+}
+.hl-fit {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+}
+@media (width >= 64rem) {
+  .hl-fit {
+    /* the planned bleed: the headline may run into the right margin */
+    max-width: calc(100% + var(--spacing-margin));
+    margin-right: calc(-1 * var(--spacing-margin));
+  }
+}
+.hl {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--text-hero);
+  line-height: var(--text-hero--line-height);
+  letter-spacing: var(--text-hero--letter-spacing);
+  text-transform: uppercase;
+}
+/* .hl-rules: cap line + baseline on every row, full-bleed (clipped by the hero). 100cqw is
+   the sheet's width here, so this box starts at the viewport's left edge. */
+.hl::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc((100cqw - 100vw) / 2);
+  width: 100vw;
+  z-index: -1;
+  background: var(--hl-rows);
+  pointer-events: none;
+}
+.hl-line {
+  display: block;
+  width: fit-content;
+  position: relative;
+  text-wrap: balance;
+}
+.hl-line:last-child .hl-text {
+  color: var(--color-accent);
+}
+.hl-cover,
+.hl-draw,
+.hl-edge {
+  display: none;
+}
+
+.hc {
+  position: absolute;
+  z-index: 0;
+  font-size: var(--text-hero);
+  aspect-ratio: 1;
+  width: 6em;
+  top: -0.382em;
+  right: -3em;
+  pointer-events: none;
+}
+@media (width >= 48rem) {
+  .hc {
+    width: 4.25em;
+    right: -1.25em;
+  }
+}
+@media (width >= 64rem) {
+  .hc {
+    right: calc(-0.5 * var(--spacing-margin));
+  }
+}
+.hc-svg,
+.hc-svg svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.hc-label {
+  position: absolute;
+  right: 1.33%;
+  bottom: calc(100% - 88.09% + 6px);
+  text-align: right;
+  white-space: nowrap;
+  color: var(--color-muted);
+  font-size: var(--text-xs); /* the annotate size; .hc's em is the hero size */
+}
+
+/* Dimension line under the headline. */
+.dim {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-top: 16px;
+  color: var(--color-muted);
+}
+@media (width >= 48rem) {
+  .dim {
+    margin-top: 20px;
+  }
+}
+.dim-tick {
+  flex: none;
+  width: 1px;
+  height: 14px;
+  background: var(--color-draft);
+}
+.dim-line {
+  flex: 1;
+  height: 1px;
+  background: var(--color-draft);
+}
+.dim-label {
+  flex: none;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* H1: the column guides draw down the first screen (the layer spans the whole document) */
+  .sheet-guides .sheet::before {
+    animation: guides-down var(--duration-slow) var(--ease-pen) 0ms both;
+  }
+  /* H2: the row guides draw left → right */
+  .hl::before {
+    animation: wipe-in 600ms var(--ease-pen) 80ms both;
+  }
+  /* H3: construction circles */
+  .hc #hc-outer,
+  .hc #hc-inner {
+    stroke-dasharray: 1 1;
+    animation: stroke-in var(--duration-drawing) var(--ease-pen) 150ms both;
+  }
+  .hc #hc-inner {
+    animation-delay: 300ms;
+  }
+  /* H3b: centre lines open from the centre. Clip-path, not scale(): a scale(0) start on these
+     dashed non-scaling-stroke paths composited them with degenerate bounds (1–3 s raster stalls).
+     The −4 insets keep the 1 px stroke uncut across the line. */
+  .hc #hc-centre path {
+    animation: centre-x 500ms var(--ease-pen) 100ms both;
+  }
+  .hc #hc-centre path + path {
+    animation-name: centre-y;
+  }
+  /* H3c: 36 ticks, 14 ms apart from t 450 */
+  .hc #hc-ticks path {
+    stroke-dasharray: 1 1;
+    animation: stroke-in 160ms linear calc(450ms + var(--k, 0) * 14ms) both;
+  }
+  /* H3d: tangents (dotted: revealed from the centre side, by clip-path as above) and the radius */
+  .hc #hc-tangents path {
+    animation: tangent-in var(--duration-base) var(--ease-pen) 700ms both;
+  }
+  .hc #hc-radius path[pathLength] {
+    stroke-dasharray: 1 1;
+    animation: stroke-in var(--duration-base) var(--ease-pen) 700ms both;
+  }
+  .hc #hc-radius path:not([pathLength]),
+  .hc #hc-radius circle {
+    animation: fade-in var(--duration-fast) var(--ease-pen) 1100ms both;
+  }
+  /* H3e: the leader, then its label */
+  .hc #hc-leader path {
+    stroke-dasharray: 1 1;
+    animation: stroke-in var(--duration-base) var(--ease-pen) 1050ms both;
+  }
+  .hc #hc-leader circle {
+    animation: fade-in var(--duration-fast) var(--ease-pen) 1050ms both;
+  }
+  .hc-label {
+    animation: wipe-in var(--duration-fast) var(--ease-pen) 1400ms both;
+  }
+
+  /* H4–H5b: outline, then the fill sweeps left → right behind the orange pen edge */
+  .hl-cover {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background: var(--hl-rows), var(--sheet-cols), var(--color-bg);
+    animation: hl-wipe var(--duration-fill) var(--ease-fill) calc(1000ms + var(--i) * 90ms) both;
+  }
+  .hl-draw {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    user-select: none;
+    pointer-events: none;
+    color: transparent;
+    -webkit-text-stroke: 1px var(--color-ink);
+    paint-order: stroke;
+    animation:
+      hl-pen var(--duration-pen) var(--ease-pen) calc(250ms + var(--i) * 110ms) both,
+      hl-wipe var(--duration-fill) var(--ease-fill) calc(1000ms + var(--i) * 90ms) forwards;
+  }
+  .hl-line:last-child .hl-draw {
+    -webkit-text-stroke-color: var(--color-accent);
+  }
+  .hl-edge {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    background: var(--color-accent);
+    clip-path: inset(0 100% 0 0);
+    animation: hl-edge var(--duration-fill) var(--ease-fill) calc(1000ms + var(--i) * 90ms) forwards;
+  }
+
+  /* H6: the dimension line opens from its label outward (clip-path: see the H5b note) */
+  .dim-line:nth-child(2) {
+    animation: clip-from-right var(--duration-pen) var(--ease-pen) 700ms both;
+  }
+  .dim-line:nth-child(4) {
+    animation: wipe-in var(--duration-pen) var(--ease-pen) 700ms both;
+  }
+  .dim-tick {
+    animation: clip-from-middle var(--duration-pen) var(--ease-pen) 700ms both;
+  }
+  .dim-label {
+    animation: wipe-in var(--duration-fast) var(--ease-pen) 1150ms both;
+  }
+}
+
+@keyframes guides-down {
+  0% {
+    clip-path: inset(0 0 100% 0);
+  }
+  99.9% {
+    clip-path: inset(0 0 calc(100% - 100lvh) 0);
+  }
+  100% {
+    clip-path: inset(0);
+  }
+}
+@keyframes wipe-in {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0);
+  }
+}
+@keyframes clip-from-right {
+  from {
+    clip-path: inset(0 0 0 100%);
+  }
+  to {
+    clip-path: inset(0);
+  }
+}
+@keyframes clip-from-middle {
+  from {
+    clip-path: inset(50% 0 50% 0);
+  }
+  to {
+    clip-path: inset(0);
+  }
+}
+@keyframes stroke-in {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes centre-x {
+  from {
+    clip-path: inset(-4px 50%);
+  }
+  to {
+    clip-path: inset(-4px 0);
+  }
+}
+@keyframes centre-y {
+  from {
+    clip-path: inset(50% -4px);
+  }
+  to {
+    clip-path: inset(0 -4px);
+  }
+}
+@keyframes tangent-in {
+  from {
+    clip-path: inset(-4px 0 -4px 100%);
+  }
+  to {
+    clip-path: inset(-4px 0);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes hl-pen {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0);
+  }
+}
+@keyframes hl-wipe {
+  from {
+    clip-path: inset(0);
+  }
+  to {
+    clip-path: inset(0 0 0 100%);
+    visibility: hidden;
+  }
+}
+/* H5b: a 2 px window that travels with the wipe's leading edge (both insets move together, so it
+   stays exactly 2 px wide), then closes at the line end. Clip-path, not translateX + opacity:
+   composited animations here made the rest of the page composite with them (see .sheet-guides). */
+@keyframes hl-edge {
+  0% {
+    clip-path: inset(0 calc(100% - 2px) 0 0);
+  }
+  99.9% {
+    clip-path: inset(0 0 0 calc(100% - 2px));
+  }
+  100% {
+    clip-path: inset(0 0 0 100%);
+    visibility: hidden;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Build: the parts list
+   ════════════════════════════════════════════════════════════════ */
+.head-rule {
+  height: 1px;
+  background: var(--color-ink);
+  transform-origin: left center;
+}
+.part {
+  position: relative;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  column-gap: 16px;
+  padding-block: 24px;
+}
+@media (width >= 48rem) {
+  .part {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    column-gap: var(--spacing-gutter);
+    padding-block: 28px;
+  }
+}
+@media (width >= 64rem) {
+  .part {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    padding-block: 32px;
+  }
+}
+.part::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--color-line);
+  transform-origin: left center;
+}
+.part:last-child::after {
+  display: none; /* the double rule closes the list */
+}
+.balloon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-top: 0.1em;
+  align-self: start;
+  color: var(--color-ink);
+}
+@media (width >= 48rem) {
+  .balloon {
+    width: 40px;
+    height: 40px;
+  }
+}
+.balloon svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.double-rule {
+  height: 4px; /* two 1 px lines 3 px apart (2 px of space between them) */
+  border-block: 1px solid var(--color-ink);
+  transform-origin: left center;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .js [data-inview] .draw-x {
+    transition: transform var(--duration-pen) var(--ease-pen) calc(var(--i, 0) * 80ms);
+  }
+  .js [data-inview] .part::after {
+    transition: transform var(--duration-pen) var(--ease-pen) calc(var(--i, 0) * 80ms);
+  }
+  .js [data-inview]:not(.is-inview) .draw-x,
+  .js [data-inview]:not(.is-inview) .part::after {
+    transform: scaleX(0);
+  }
+  .js [data-inview] .balloon path {
+    stroke-dasharray: 1 1;
+    transition: stroke-dashoffset var(--duration-base) var(--ease-pen) calc(var(--i, 0) * 80ms + 120ms);
+  }
+  .js [data-inview]:not(.is-inview) .balloon path {
+    stroke-dashoffset: 1;
+  }
+  .js [data-inview] .fade-on {
+    transition: opacity var(--duration-fast) var(--ease-pen) calc(var(--i, 0) * 80ms + var(--after, 0ms));
+  }
+  .js [data-inview]:not(.is-inview) .fade-on {
+    opacity: 0;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Process: one plate, four passes
+   ════════════════════════════════════════════════════════════════ */
+@media (width >= 64rem) {
+  .step {
+    min-height: 56svh;
+  }
+  .step:last-child {
+    min-height: auto;
+  }
+}
+.step-box {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 20px;
+  border: 1px solid var(--color-ink);
+  color: var(--color-ink);
+  transition:
+    background-color var(--duration-fast) var(--ease-out-expo),
+    color var(--duration-fast) var(--ease-out-expo),
+    border-color var(--duration-fast) var(--ease-out-expo);
+}
+.step[aria-current="step"] .step-box {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-accent-ink);
+}
+.step-title {
+  transition: color var(--duration-fast) var(--ease-out-expo);
+}
+@media (width >= 64rem) {
+  .process[data-active] .step:not([aria-current="step"]) .step-title {
+    color: var(--color-ink-soft);
+  }
+}
+.plate {
+  position: sticky;
+  top: max(32px, calc(50svh - 260px));
+  align-self: start;
+}
+.plate-svg,
+.plate-svg svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+}
+/* Default (no JS, reduced motion): the step 4 state. */
+.plate #pl-1,
+.plate #pl-2 {
+  opacity: 0.45;
+}
+.seg {
+  width: 24px;
+  height: 4px;
+  background: var(--color-line);
+  transition: background-color var(--duration-fast) var(--ease-out-expo);
+}
+.plate-n {
+  display: none;
+}
+.process[data-step="1"] .plate-n-1,
+.process[data-step="2"] .plate-n-2,
+.process[data-step="3"] .plate-n-3,
+.process[data-step="4"] .plate-n-4 {
+  display: inline;
+}
+.process[data-step="1"] .seg:nth-child(-n + 1),
+.process[data-step="2"] .seg:nth-child(-n + 2),
+.process[data-step="3"] .seg:nth-child(-n + 3),
+.process[data-step="4"] .seg:nth-child(-n + 4) {
+  background: var(--color-accent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* P1: a layer draws when data-step reaches it; nothing animates out (removal is instant). */
+  .js .plate .pl-layer path[pathLength] {
+    stroke-dasharray: 1 1;
+    stroke-dashoffset: 1;
+  }
+  .js .plate .pl-heads,
+  .js .plate .pl-nodes {
+    opacity: 0;
+  }
+  .js .plate #pl-4 {
+    clip-path: inset(0 100% 0 0);
+  }
+  .js .plate #pl-1,
+  .js .plate #pl-2 {
+    opacity: 1;
+  }
+  .js .process[data-step="1"] #pl-1 path[pathLength],
+  .js .process[data-step="2"] :is(#pl-1, #pl-2) path[pathLength],
+  .js .process[data-step="3"] :is(#pl-1, #pl-2, #pl-3) path[pathLength],
+  .js .process[data-step="4"] :is(#pl-1, #pl-2, #pl-3) path[pathLength] {
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset var(--duration-slow) var(--ease-pen) calc(min(var(--k, 0) * 30ms, 300ms));
+  }
+  .js .process[data-step="1"] #pl-1 :is(.pl-heads, .pl-nodes),
+  .js .process[data-step="2"] :is(#pl-1, #pl-2) :is(.pl-heads, .pl-nodes),
+  .js .process[data-step="3"] :is(#pl-1, #pl-2, #pl-3) :is(.pl-heads, .pl-nodes),
+  .js .process[data-step="4"] :is(#pl-1, #pl-2, #pl-3) :is(.pl-heads, .pl-nodes) {
+    opacity: 1;
+    transition: opacity var(--duration-fast) var(--ease-pen) 490ms;
+  }
+  /* P2: the solids fill at step 4 */
+  .js .process[data-step="4"] .plate #pl-4 {
+    clip-path: inset(0);
+    transition: clip-path var(--duration-fill) var(--ease-fill) var(--duration-slow);
+  }
+  /* P3: measure and plan recede at step 4 */
+  .js .process[data-step="4"] .plate :is(#pl-1, #pl-2) {
+    opacity: 0.45;
+    transition: opacity var(--duration-slow) var(--ease-pen);
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Contact: the title block
+   ════════════════════════════════════════════════════════════════ */
+.title-block {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  background: var(--color-surface);
+}
+.tb-frame {
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--color-ink);
+  pointer-events: none;
+  z-index: 2;
+}
+.tb-cell {
+  position: relative;
+  min-width: 0;
+}
+.tb-rule-top,
+.tb-rule-left {
+  position: absolute;
+  background: var(--color-line);
+  pointer-events: none;
+}
+.tb-rule-top {
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  transform-origin: left center;
+}
+.tb-rule-left {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  transform-origin: center top;
+}
+.tb-value {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-variant-ligatures: none;
+  font-variant-numeric: tabular-nums;
+}
+
+/* C2: the CTA draws as a 1 px accent outline with an ink label, then fills. */
+.btn-draw {
+  background: transparent;
+}
+.btn-draw:hover,
+.btn-draw:active {
+  background: transparent;
+}
+.cta-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--color-accent);
+  transition: background-color var(--duration-instant) var(--ease-out-expo);
+}
+.btn-draw:hover .cta-fill {
+  background: var(--color-accent-hover);
+}
+.btn-draw:active .cta-fill {
+  background: var(--color-accent-press);
+}
+.btn-draw::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--color-accent);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* C1: frame and cell rules draw from the top-left corner */
+  .js [data-inview] .tb-frame {
+    transition: clip-path var(--duration-pen) var(--ease-pen);
+  }
+  .js [data-inview]:not(.is-inview) .tb-frame {
+    clip-path: inset(0 100% 100% 0);
+  }
+  .js [data-inview] :is(.tb-rule-top, .tb-rule-left) {
+    transition: transform var(--duration-pen) var(--ease-pen) calc(var(--i, 0) * 60ms);
+  }
+  .js [data-inview]:not(.is-inview) .tb-rule-top {
+    transform: scaleX(0);
+  }
+  .js [data-inview]:not(.is-inview) .tb-rule-left {
+    transform: scaleY(0);
+  }
+  /* C2 */
+  .js [data-inview] .btn-draw .cta-fill {
+    transition:
+      clip-path var(--duration-fill) var(--ease-fill) 300ms,
+      background-color var(--duration-instant) var(--ease-out-expo);
+  }
+  .js [data-inview]:not(.is-inview) .btn-draw .cta-fill {
+    clip-path: inset(0 100% 0 0);
+  }
+  .js [data-inview] .btn-draw {
+    transition: color 0ms linear calc(300ms + var(--duration-fill) / 2);
+  }
+  .js [data-inview]:not(.is-inview) .btn-draw {
+    color: var(--color-ink);
+  }
+}
+} /* end @layer components */
