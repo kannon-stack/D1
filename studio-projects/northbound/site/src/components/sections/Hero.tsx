@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { Triangle } from "@/components/ui/Triangle";
 import { copy, specCopy } from "@/content/copy";
 import { terrainHeroInner } from "@/assets/terrain";
 import { miniInner } from "@/assets/minis";
@@ -71,7 +72,11 @@ function Terrain({ label }: { label: string }) {
             className={`spot-label survey-pin num${s.code === "DROP" ? " is-summit" : ""}`}
             style={at(s.left, s.top, passDelay(s.left))}
           >
-            {s.code === "DROP" && <span className="text-accent">{"▲ "}</span>}
+            {s.code === "DROP" && (
+                <span className="text-accent">
+                  <Triangle className="mr-1" />
+                </span>
+              )}
             {`${s.T}°`}
           </span>
         ))}

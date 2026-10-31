@@ -8,9 +8,9 @@ import { copy } from "@/content/copy";
 import { site } from "@/content/metadata";
 
 // One family, three widths (type.md): Archivo's variable wght + wdth axes, normal and italic, both
-// preloaded. The files are Google Fonts' own Archivo, requested with `text=` so they carry only the
-// glyphs this page sets (all printable ASCII + the copy's punctuation, units and arrows): 134 KB
-// instead of 192 KB, which is the largest single cost in mobile LCP (Critic R1-01).
+// preloaded. The files are Google Fonts' own Archivo, fetched through the CSS2 API with `text=` by
+// scripts/subset-fonts.mjs (printable ASCII + every non-ASCII character in src/; the list is in
+// fonts/README.md): 134 KB instead of 192 KB, the largest single cost in mobile LCP (R1-01).
 const archivo = localFont({
   src: [
     { path: "./fonts/archivo-normal.woff2", style: "normal", weight: "100 900" },

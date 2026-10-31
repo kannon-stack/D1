@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence } from "motion/react";
+import { Triangle } from "@/components/ui/Triangle";
 import * as m from "motion/react-m";
 import { useReducedMotionSafe } from "@/lib/use-reduced-motion";
 import { useRef, useState, type FormEvent } from "react";
@@ -105,7 +106,7 @@ export function SubscribeForm({ s, f }: { s: SubscribeCopy; f: FormCopy }) {
               animate={{ opacity: 1, y: 0 }}
               transition={reduce ? { duration: 0 } : { ...inT, delay: 0.35 }}
             >
-              {"▲"}
+              <Triangle />
             </m.span>
             <h3 ref={revealSuccess} tabIndex={-1} className="mt-3 font-display width-wide text-2xl font-normal">
               {f.success_title}
@@ -139,7 +140,7 @@ export function SubscribeForm({ s, f }: { s: SubscribeCopy; f: FormCopy }) {
                       className="sr-only"
                     />
                     <span className="summit" aria-hidden="true">
-                      {"▲"}
+                      <Triangle />
                     </span>
                     {plan === i && <span className="sr-only">{s.selected_label}</span>}
                     <span className="plan-name text-base font-semibold">{p.name}</span>
@@ -175,7 +176,7 @@ export function SubscribeForm({ s, f }: { s: SubscribeCopy; f: FormCopy }) {
                       className="sr-only"
                     />
                     <span className="summit" aria-hidden="true">
-                      {"▲"}
+                      <Triangle />
                     </span>
                     {style === x.value && <span className="sr-only">{s.selected_label}</span>}
                     <span className="text-base font-semibold">{x.label}</span>

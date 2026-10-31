@@ -1,6 +1,7 @@
 "use client";
 
 import * as m from "motion/react-m";
+import { Triangle } from "@/components/ui/Triangle";
 import {
   useInView,
   useMotionValue,
@@ -178,7 +179,7 @@ export function RoastStage({ chart, dateLine, imageAlt, crossings, events, phase
   const dataPhases = phases.filter((ph) => ph.pct !== null);
   const cooling = phases.find((ph) => ph.pct === null)!;
   const minuteTicks = Array.from({ length: 13 }, (_, i) => i);
-  const yLabels = [200, 160, 120, 80];
+  const yLabels = [160, 120];
 
   return (
     <figure id="section-a" className="stage-figure" aria-labelledby="stage-title">
@@ -306,9 +307,10 @@ export function RoastStage({ chart, dateLine, imageAlt, crossings, events, phase
                 ))}
               </m.div>
 
-              {/* md+: 200/160/120/80 at the right edge. sm: 160 and 120 at the left (R1-04). */}
+              {/* R2-04: only 160° and 120°, at every breakpoint, just right of the last charge-fall
+                  projection line; the right edge belongs to the cooling curve and DROP. */}
               {yLabels.map((T) => (
-                <span key={T} className={`y-label num${T === 200 || T === 80 ? " hidden md:block" : ""}`} style={{ top: `${yPct(T)}%` }}>
+                <span key={T} className="y-label num" style={{ top: `${yPct(T)}%` }}>
                   {T}°
                 </span>
               ))}
@@ -322,7 +324,7 @@ export function RoastStage({ chart, dateLine, imageAlt, crossings, events, phase
                     data-on={i < eventsOn ? "" : undefined}
                     style={{ left: `${e.left}%`, top: `${e.top}%` }}
                   >
-                    {e.code === "DROP" ? <span className="wp-summit">{"▲"}</span> : <span className="wp-dot" />}
+                    {e.code === "DROP" ? <span className="wp-summit"><Triangle /></span> : <span className="wp-dot" />}
                     {e.code !== "CHARGE" && <span className="wp-leader" />}
                     <span className="wp-label">
                       <span className="hidden font-semibold md:inline">{c.name}</span>

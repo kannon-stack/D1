@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { Triangle } from "@/components/ui/Triangle";
 import { copy } from "@/content/copy";
 import { miniInner } from "@/assets/minis";
 import { data, yPct } from "@/lib/data";
@@ -41,7 +42,7 @@ function Scale({
         {markers.map((m) => (
           <span key={m.pct} className="level-marker" style={{ left: `${m.pct}%`, "--d": `${m.delay + 1100}ms` } as CSSProperties}>
             {m.tag && <span className="level-tag num">{m.tag}</span>}
-            <span className="level-glyph">{"\u25BC"}</span>
+            <span className="level-glyph"><Triangle dir="down" /></span>
           </span>
         ))}
       </span>

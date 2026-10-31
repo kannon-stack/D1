@@ -1119,7 +1119,7 @@
 }
 .y-label {
   position: absolute;
-  left: 40px;
+  left: calc(5.74% + 12px);
   translate: 0 calc(-100% - 4px);
   padding-inline: 2px;
   background: var(--color-bg);
@@ -1236,10 +1236,6 @@
   background: var(--color-bg);
 }
 @media (min-width: 768px) {
-  .y-label {
-    left: auto;
-    right: 8px;
-  }
   .wp-drop .wp-label {
     display: block;
   }
@@ -1559,9 +1555,10 @@
   position: relative;
   height: 12rem;
 }
+/* R2-04: the plot is inset 2.5rem; the y-labels live in that gutter, never on the curves. */
 .plate-curves {
   position: absolute;
-  inset: 0 5.5rem 0 0;
+  inset: 0 5.5rem 0 2.5rem;
 }
 .plate-gutter {
   position: absolute;
@@ -1579,10 +1576,9 @@
 }
 .plate-grid-label {
   position: absolute;
-  left: 0;
-  bottom: 3px;
-  padding-right: 4px;
-  background: var(--color-surface);
+  right: calc(100% + 6px);
+  top: 50%;
+  translate: 0 -50%;
   font-size: var(--text-xs);
   line-height: 1;
   font-stretch: 75%;
@@ -2252,24 +2248,17 @@ fieldset:disabled .radio-card {
   }
 }
 
-/* R1-01: skip style, layout and paint for below-fold sections until they near the viewport.
-   `auto` remembers each section's real size once it has rendered. Not on #roast-curve: the sticky
-   stage keeps real layout (measured: no Lighthouse gain there). */
-#roasts,
-#how-it-works,
-#proof,
-#subscribe {
-  content-visibility: auto;
+
+/* ▲ / ▼ map markers (Triangle.tsx): 1em wide, sat on the baseline like the glyph they replace. */
+.tri {
+  display: inline-block;
+  width: 1em;
+  height: 0.9em;
+  vertical-align: -0.05em;
 }
-#roasts {
-  contain-intrinsic-size: auto 1800px;
-}
-#how-it-works {
-  contain-intrinsic-size: auto 1400px;
-}
-#proof {
-  contain-intrinsic-size: auto 1300px;
-}
-#subscribe {
-  contain-intrinsic-size: auto 1500px;
+.wp-summit .tri,
+.level-marker .tri,
+.radio-card .summit .tri,
+.bullet-summit .tri {
+  display: block;
 }

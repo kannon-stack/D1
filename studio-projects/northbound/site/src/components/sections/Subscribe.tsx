@@ -1,4 +1,5 @@
 import { copy } from "@/content/copy";
+import { Triangle } from "@/components/ui/Triangle";
 import { SectionHead, sentenceLines } from "@/components/ui/SectionHead";
 import { SubscribeForm } from "@/components/motion/SubscribeForm";
 
@@ -26,7 +27,7 @@ export function Subscribe() {
             {s.included.map((item) => (
               <li key={item} className="flex gap-3 text-base text-ink-soft">
                 <span className="bullet-summit" aria-hidden="true">
-                  {"▲"}
+                  <Triangle />
                 </span>
                 <span>{item}</span>
               </li>
