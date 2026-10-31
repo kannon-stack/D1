@@ -468,6 +468,25 @@ R3-01 (minor): on the 375 px roast stage the playhead line crosses the "DROP 10:
 
 ---
 
+## 9. Second run: Agkbuilds (a real client)
+
+The studio's first real page: a static one-page site for **Agkbuilds**, a custom-software company, in `studio-projects/agkbuilds/`. Direction **A · Working Drawing**: the page is a four-sheet engineering drawing, and the headline draws as outlines before filling solid.
+
+| Round | Verdict | Rubric average (lowest) | Lighthouse mobile Performance | axe serious + critical | Defects filed |
+|---|---|---|---|---|---|
+| 1 | PASS (1 major open) | 8.1 (7) | 99 (Critic's median of 3) | 0 | 7 (1 major, 6 minor) |
+| 2 | **PASS** | 8.6 (8) | 99 | 0 | 1 new, minor, waived by the Director |
+
+What the run changed in the studio:
+- **Real clients get a facts rule.** Every specific on the page (services, email, phone, name) came from the user, and the Critic reads the built HTML's text for any other claim. The Director also asked the user to approve the generic "How we work" wording before the build.
+- **The user is asked only what a bot can't know:** the intake, the direction, the headline and the wording check. Services and contact details were requested in plain chat.
+- **Static export is supported by the tools:** `serve.mjs` serves an `output: "export"` site's `out/` folder with a small static server, so the Critic tests the files that would be uploaded. The postbuild step fails the build if `localhost`, a canonical link or `og:url` leaks in with no site URL.
+- **Parallel work needs a re-fit step.** The Copywriter wrote before the layout spec existed, so slot names and the headline's line budget (4 short lines, not 3 long ones) had to be reconciled. `check-content.mjs` found 16 errors in one run; the Copywriter fixed them in one pass.
+- **A passing score isn't a sign-off.** Round 1 passed the gate while a designed feature (the process plate's four passes) did not work, so the Director sent every defect back and confirmed it in round 2.
+- **Usage limits again:** one 5-hour limit stopped the Builder before it wrote anything. Resuming the same agent finished the build.
+
+---
+
 ## Appendix A: the full 25-bot menu
 
 Every specialist role considered while designing the team. The last column shows which Lean Squad bot covers it today. The skills listed here are marketplace skills a dedicated bot could use; the built Lean Squad uses its own skills instead (see §3).
