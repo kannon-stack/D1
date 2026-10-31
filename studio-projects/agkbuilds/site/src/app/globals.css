@@ -272,12 +272,24 @@
 
 @layer components {
 /* Anchors (layout-spec Global): the nav is static, so sections land 24 px under the top. */
-#top,
 #build,
 #process,
 #contact,
 #main {
   scroll-margin-top: 24px;
+}
+/* R1-05: the hero sits right under the static nav, so #top's margin is the nav height and the
+   wordmark / Back to top land at scrollY 0 with the whole nav visible. */
+:root {
+  --nav-h: 56px;
+}
+@media (width >= 64rem) {
+  :root {
+    --nav-h: 72px;
+  }
+}
+#top {
+  scroll-margin-top: var(--nav-h);
 }
 
 /* Skip link: visually hidden until focused, then fixed top-left 12 px. */
@@ -446,18 +458,16 @@ body {
   transform: translateY(1px);
 }
 
-/* The phone value: always underlined, 2 px on hover; a 44 px tall hit area (like the copy buttons). */
+/* The phone value: always underlined, 2 px on hover. R1-04: the link box itself is 44 px
+   or taller (10 px padding cancelled by a −10 px margin), so the visual rhythm is unchanged. */
 .phone-link {
-  position: relative;
+  display: inline-block;
+  padding-block: 10px;
+  margin-block: -10px;
   color: var(--color-ink);
   text-decoration-line: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 4px;
-}
-.phone-link::before {
-  content: "";
-  position: absolute;
-  inset: -9px -4px;
 }
 .phone-link:hover {
   text-decoration-thickness: 2px;
@@ -555,8 +565,13 @@ body {
 }
 .hl-fit {
   position: relative;
-  width: fit-content;
   max-width: 100%;
+}
+/* R1-03: below md the dimension spans the full content width; md+ it is the widest line. */
+@media (width >= 48rem) {
+  .hl-fit {
+    width: fit-content;
+  }
 }
 @media (width >= 64rem) {
   .hl-fit {
@@ -661,7 +676,8 @@ body {
   background: var(--color-draft);
 }
 .dim-line {
-  flex: 1;
+  flex: 1 1 24px;
+  min-width: 24px;
   height: 1px;
   background: var(--color-draft);
 }
@@ -1030,11 +1046,6 @@ body {
   height: auto;
   aspect-ratio: 4 / 3;
 }
-/* Default (no JS, reduced motion): the step 4 state. */
-.plate #pl-1,
-.plate #pl-2 {
-  opacity: 0.45;
-}
 .seg {
   width: 24px;
   height: 4px;
@@ -1057,45 +1068,65 @@ body {
   background: var(--color-accent);
 }
 
+/* P1–P3 states (motion.md, R1-01/R1-02). The plate always shows the cumulative state of
+   data-step, in every motion mode: the server HTML carries data-step="4" (the finished plate,
+   also the no-JS state) and PageEffects moves it at lg+, reduced motion included. Only the
+   transitions below sit inside no-preference, so reduced motion swaps layers instantly.
+   Stroked paths are selected structurally, never by [pathLength]: Chromium did not re-match
+   attribute-keyed rules when data-step changed, so passes 1–3 never drew (R1-01). */
+.plate .pl-layer:not(#pl-4) > path,
+.plate .pl-layer:not(#pl-4) > g:not(.pl-heads, .pl-nodes) > path {
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 1;
+}
+.plate :is(.pl-heads, .pl-nodes) {
+  opacity: 0;
+}
+.plate #pl-4 {
+  clip-path: inset(0 100% 0 0);
+}
+.process[data-step="1"] .plate #pl-1 > path,
+.process[data-step="1"] .plate #pl-1 > g:not(.pl-heads, .pl-nodes) > path,
+.process[data-step="2"] .plate :is(#pl-1, #pl-2) > path,
+.process[data-step="2"] .plate :is(#pl-1, #pl-2) > g:not(.pl-heads, .pl-nodes) > path,
+.process:is([data-step="3"], [data-step="4"]) .plate :is(#pl-1, #pl-2, #pl-3) > path,
+.process:is([data-step="3"], [data-step="4"]) .plate :is(#pl-1, #pl-2, #pl-3) > g:not(.pl-heads, .pl-nodes) > path {
+  stroke-dashoffset: 0;
+}
+.process[data-step="1"] .plate #pl-1 > :is(.pl-heads, .pl-nodes),
+.process[data-step="2"] .plate :is(#pl-1, #pl-2) > :is(.pl-heads, .pl-nodes),
+.process:is([data-step="3"], [data-step="4"]) .plate :is(#pl-1, #pl-2, #pl-3) > :is(.pl-heads, .pl-nodes) {
+  opacity: 1;
+}
+.process[data-step="4"] .plate #pl-4 {
+  clip-path: inset(0);
+}
+.process[data-step="4"] .plate :is(#pl-1, #pl-2) {
+  opacity: 0.45;
+}
+
 @media (prefers-reduced-motion: no-preference) {
-  /* P1: a layer draws when data-step reaches it; nothing animates out (removal is instant). */
-  .js .plate .pl-layer path[pathLength] {
-    stroke-dasharray: 1 1;
-    stroke-dashoffset: 1;
-  }
-  .js .plate .pl-heads,
-  .js .plate .pl-nodes {
-    opacity: 0;
-  }
-  .js .plate #pl-4 {
-    clip-path: inset(0 100% 0 0);
-  }
-  .js .plate #pl-1,
-  .js .plate #pl-2 {
-    opacity: 1;
-  }
-  .js .process[data-step="1"] #pl-1 path[pathLength],
-  .js .process[data-step="2"] :is(#pl-1, #pl-2) path[pathLength],
-  .js .process[data-step="3"] :is(#pl-1, #pl-2, #pl-3) path[pathLength],
-  .js .process[data-step="4"] :is(#pl-1, #pl-2, #pl-3) path[pathLength] {
-    stroke-dashoffset: 0;
+  /* P1: a layer draws when data-step reaches it; nothing animates out (removal is instant,
+     because the transition is declared only on the drawn state). */
+  .process[data-step="1"] .plate #pl-1 > path,
+  .process[data-step="1"] .plate #pl-1 > g:not(.pl-heads, .pl-nodes) > path,
+  .process[data-step="2"] .plate :is(#pl-1, #pl-2) > path,
+  .process[data-step="2"] .plate :is(#pl-1, #pl-2) > g:not(.pl-heads, .pl-nodes) > path,
+  .process:is([data-step="3"], [data-step="4"]) .plate :is(#pl-1, #pl-2, #pl-3) > path,
+  .process:is([data-step="3"], [data-step="4"]) .plate :is(#pl-1, #pl-2, #pl-3) > g:not(.pl-heads, .pl-nodes) > path {
     transition: stroke-dashoffset var(--duration-slow) var(--ease-pen) calc(min(var(--k, 0) * 30ms, 300ms));
   }
-  .js .process[data-step="1"] #pl-1 :is(.pl-heads, .pl-nodes),
-  .js .process[data-step="2"] :is(#pl-1, #pl-2) :is(.pl-heads, .pl-nodes),
-  .js .process[data-step="3"] :is(#pl-1, #pl-2, #pl-3) :is(.pl-heads, .pl-nodes),
-  .js .process[data-step="4"] :is(#pl-1, #pl-2, #pl-3) :is(.pl-heads, .pl-nodes) {
-    opacity: 1;
+  .process[data-step="1"] .plate #pl-1 > :is(.pl-heads, .pl-nodes),
+  .process[data-step="2"] .plate :is(#pl-1, #pl-2) > :is(.pl-heads, .pl-nodes),
+  .process:is([data-step="3"], [data-step="4"]) .plate :is(#pl-1, #pl-2, #pl-3) > :is(.pl-heads, .pl-nodes) {
     transition: opacity var(--duration-fast) var(--ease-pen) 490ms;
   }
   /* P2: the solids fill at step 4 */
-  .js .process[data-step="4"] .plate #pl-4 {
-    clip-path: inset(0);
+  .process[data-step="4"] .plate #pl-4 {
     transition: clip-path var(--duration-fill) var(--ease-fill) var(--duration-slow);
   }
   /* P3: measure and plan recede at step 4 */
-  .js .process[data-step="4"] .plate :is(#pl-1, #pl-2) {
-    opacity: 0.45;
+  .process[data-step="4"] .plate :is(#pl-1, #pl-2) {
     transition: opacity var(--duration-slow) var(--ease-pen);
   }
 }

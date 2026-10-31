@@ -6,11 +6,21 @@
 // every exported HTML file and RSC payload, then fails the build if any of these remain:
 // "localhost", a canonical link or og:url. With NEXT_PUBLIC_SITE_URL set, it only checks that
 // no "localhost" slipped in.
+// R1-07: the export writes the OG image as an extensionless file, which static hosts serve as
+// application/octet-stream. This also writes out/opengraph-image.png (same bytes) and points
+// og:image / twitter:image at it, in both modes, and fails if any meta tag still uses the old path.
 import fs from "node:fs";
 import path from "node:path";
 
 const out = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../out");
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+
+const ogSrc = path.join(out, "opengraph-image");
+if (!fs.existsSync(ogSrc)) {
+  console.error("postbuild: out/opengraph-image is missing");
+  process.exit(1);
+}
+fs.copyFileSync(ogSrc, path.join(out, "opengraph-image.png"));
 
 const files = [];
 (function walk(dir) {
@@ -26,6 +36,12 @@ let rewritten = 0;
 const problems = [];
 for (const f of files) {
   let s = fs.readFileSync(f, "utf8");
+  const png = s.replace(/\/opengraph-image(?=\?|")/g, "/opengraph-image.png");
+  if (png !== s) {
+    s = png;
+    fs.writeFileSync(f, s);
+  }
+  if (/\/opengraph-image(?!\.png)(?=[?"])/.test(s)) problems.push(`${path.relative(out, f)}: extensionless OG image URL`);
   if (!siteUrl) {
     const next = s.replace(/https?:\/\/localhost(?::\d+)?(?=\/)/g, "");
     if (next !== s) {
@@ -44,6 +60,6 @@ if (problems.length) {
 }
 console.log(
   siteUrl
-    ? `postbuild: site URL ${siteUrl}; ${files.length} files checked, no localhost`
-    : `postbuild: no NEXT_PUBLIC_SITE_URL; social image URLs made root-relative in ${rewritten} files; no localhost, canonical or og:url in ${files.length} files`,
+    ? `postbuild: site URL ${siteUrl}; og:image → opengraph-image.png; ${files.length} files checked, no localhost`
+    : `postbuild: no NEXT_PUBLIC_SITE_URL; og:image → /opengraph-image.png (root-relative) in ${rewritten} files; no localhost, canonical or og:url in ${files.length} files`,
 );

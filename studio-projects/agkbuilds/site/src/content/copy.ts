@@ -88,7 +88,7 @@ export const copy = {
     "phone": "254-231-1149",
     "copy": "Copy",
     "copied": "Copied",
-    "copy_failed": "Couldn’t copy. Text selected: copy it.",
+    "copy_failed": "Couldn’t copy. Text selected.",
     "copy_email_aria": "Copy email address",
     "copy_phone_aria": "Copy phone number",
     "copied_email_announce": "Email address copied.",

@@ -1,6 +1,7 @@
 // Anchor-landing check: every in-page link and every direct /#id load, at 375 and 1280, in smooth
-// and reduced-motion modes. The nav is static, so each target section's top must land at its
-// scroll-margin-top, 24 px (±4) under the top of the viewport. Serve the export on :3100 first:
+// and reduced-motion modes. The nav is static, so #build, #process and #contact must land 24 px
+// (±4) under the top of the viewport, and #top (scroll-margin = the nav height, R1-05) must bring
+// the page back to scrollY 0 (±4) with the whole nav visible. Serve the export on :3100 first:
 //
 //   node .claude/studio-tools/scripts/serve.mjs start --dir studio-projects/agkbuilds/site
 //   node studio-projects/agkbuilds/site/scripts/check-anchors.mjs
@@ -28,10 +29,13 @@ async function settle(page) {
 }
 async function check(page, label, id, ctx) {
   await settle(page);
-  const top = await page.evaluate((id) => Math.round(document.getElementById(id).getBoundingClientRect().top), id);
-  const ok = Math.abs(top - EXPECT) <= 4;
+  const { top, y } = await page.evaluate(
+    (id) => ({ top: Math.round(document.getElementById(id).getBoundingClientRect().top), y: Math.round(scrollY) }),
+    id,
+  );
+  const ok = id === "top" ? Math.abs(y) <= 4 : Math.abs(top - EXPECT) <= 4;
   if (!ok) fails++;
-  rows.push(`${ok ? "ok  " : "FAIL"} ${ctx.padEnd(13)} ${label.padEnd(26)} #${id.padEnd(9)} top=${top}`);
+  rows.push(`${ok ? "ok  " : "FAIL"} ${ctx.padEnd(13)} ${label.padEnd(28)} #${id.padEnd(9)} top=${top} scrollY=${y}`);
 }
 
 for (const width of [375, 1280]) {
@@ -78,6 +82,6 @@ for (const width of [375, 1280]) {
   }
 }
 console.log(rows.join("\n"));
-console.log(fails ? `${fails} FAILED` : `all anchors land at ${EXPECT} ±4 px`);
+console.log(fails ? `${fails} FAILED` : `all anchors land: sections at ${EXPECT} ±4 px, #top at scrollY 0 ±4`);
 process.exitCode = fails ? 1 : 0;
 await browser.close();
