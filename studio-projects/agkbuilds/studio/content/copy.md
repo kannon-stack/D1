@@ -116,7 +116,7 @@ phone_label: "Phone"                      # 5/10
 phone: "254-231-1149"                     # 12/16
 copy: "Copy"                              # 4/8
 copied: "Copied"                          # 6/8
-copy_failed: "Couldn’t copy. Text selected: copy it."   # 38/40
+copy_failed: "Couldn’t copy. Text selected."   # 29/40
 copy_email_aria: "Copy email address"     # 18/32
 copy_phone_aria: "Copy phone number"      # 17/32
 copied_email_announce: "Email address copied."   # 21/40
