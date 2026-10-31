@@ -1,0 +1,208 @@
+/*
+ * Design tokens: Agkbuilds · direction "A · Working Drawing"
+ * The Builder pastes this file into src/app/globals.css directly after
+ * `@import "tailwindcss";`
+ * Verify with: node .claude/studio-tools/scripts/contrast.mjs studio-projects/agkbuilds/studio/design/tokens.css
+ *
+ * Palette story: a drawing sheet. Graphite ground, paper ink, pencil for notes,
+ * faint guide lines for the grid, and ONE signal-orange accent that marks only
+ * what is "built": the CTA, the last headline line once it fills, the active
+ * process step, focus and selection. Dark (graphite sheet) is the home look;
+ * light is drafting film with graphite ink, designed on its own terms (the
+ * orange is deeper and redder so it holds 4.5:1 as text).
+ *
+ * The @theme block below holds the LIGHT values (Tailwind needs one default);
+ * the dark override follows prefers-color-scheme. There is no manual toggle.
+ */
+
+@theme {
+  /* ── Color: light, "drafting film" (OKLCH) ─────────────── */
+  --color-bg: oklch(0.965 0.007 90); /* drafting film */
+  --color-surface: oklch(0.99 0.004 90); /* title-block paper, copy-button fill */
+  --color-surface-2: oklch(0.935 0.009 90); /* hover/pressed fill for small buttons */
+  --color-ink: oklch(0.23 0.014 250); /* graphite: all display + body text */
+  --color-ink-soft: oklch(0.36 0.014 250); /* long body copy, descriptions */
+  --color-muted: oklch(0.48 0.016 250); /* pencil: mono annotations, labels, hints */
+  --color-line: oklch(0.8 0.012 250); /* hairlines: table rules, title-block cells (decorative) */
+  --color-grid: oklch(0.915 0.008 250); /* the visible column guides (decorative, faint by design) */
+  --color-draft: oklch(0.7 0.02 250); /* construction linework: circles, guides, dimension lines */
+  --color-accent: oklch(0.53 0.16 42); /* signal orange, deepened and reddened for film (max in-gamut chroma) */
+  --color-accent-hover: oklch(0.47 0.148 40); /* CTA hover */
+  --color-accent-press: oklch(0.43 0.138 39); /* CTA pressed */
+  --color-accent-ink: oklch(0.99 0.004 90); /* text on accent */
+  --color-focus: var(--color-accent);
+
+  /* Every accent use is possible as TEXT (headline line 4, active step numeral,
+     link hover, "Copied" state), so it is held to 4.5 on every ground, not 3. */
+  /* contrast: accent/bg 4.5 */
+  /* contrast: accent/surface 4.5 */
+  /* contrast: accent/surface-2 4.5 */
+  /* contrast: accent-ink/accent-hover 4.5 */
+  /* contrast: accent-ink/accent-press 4.5 */
+  /* contrast: ink-soft/bg 4.5 */
+  /* contrast: ink-soft/surface 4.5 */
+  /* contrast: ink/surface-2 4.5 */
+  /* contrast: muted/surface-2 4.5 */
+  /* contrast: focus/bg 3 */
+  /* contrast: focus/surface 3 */
+  /* contrast: draft/bg 1.9 */
+
+  /* ── Type scale ─────────────────────────────────────────── */
+  /* type-scale.mjs --base 16:18 --ratio 1.2:1.25 --viewports 360:1440
+     Wide heavy caps (Archivo wdth 125 / wght 800) are ~0.8 em per character, so the
+     scale itself is moderate; the drama is the hero size (--text-hero), 40 → 120 px,
+     which is 2.5× body at 375 and 6.7× body at 1440. Display tokens are only used
+     in UPPERCASE; their tracking is tuned for that (see type.md). */
+  --text-xs: clamp(0.6944rem, 0.6655rem + 0.1286vw, 0.7813rem); /* 11.1 → 12.5px · mono labels */
+  --text-xs--line-height: 1.5;
+  --text-xs--letter-spacing: 0.06em; /* mono caps */
+  --text-sm: clamp(0.8333rem, 0.7986rem + 0.1543vw, 0.9375rem); /* 13.3 → 15px */
+  --text-sm--line-height: 1.55;
+  --text-sm--letter-spacing: 0;
+  --text-base: clamp(1rem, 0.9583rem + 0.1852vw, 1.125rem); /* 16 → 18px */
+  --text-base--line-height: 1.6;
+  --text-base--letter-spacing: 0;
+  --text-lg: clamp(1.2rem, 1.1312rem + 0.3056vw, 1.4063rem); /* 19.2 → 22.5px */
+  --text-lg--line-height: 1.45;
+  --text-lg--letter-spacing: -0.005em;
+  --text-xl: clamp(1.44rem, 1.3341rem + 0.4708vw, 1.7578rem); /* 23 → 28.1px */
+  --text-xl--line-height: 1.1;
+  --text-xl--letter-spacing: -0.005em;
+  --text-2xl: clamp(1.728rem, 1.5716rem + 0.6952vw, 2.1973rem); /* 27.6 → 35.2px */
+  --text-2xl--line-height: 1.05;
+  --text-2xl--letter-spacing: -0.01em;
+  --text-3xl: clamp(2.0736rem, 1.8493rem + 0.997vw, 2.7466rem); /* 33.2 → 43.9px */
+  --text-3xl--line-height: 1;
+  --text-3xl--letter-spacing: -0.01em;
+  --text-4xl: clamp(2.4883rem, 2.1734rem + 1.3999vw, 3.4332rem); /* 39.8 → 54.9px */
+  --text-4xl--line-height: 0.96;
+  --text-4xl--letter-spacing: -0.012em;
+  --text-5xl: clamp(2.986rem, 2.5508rem + 1.9341vw, 4.2915rem); /* 47.8 → 68.7px */
+  --text-5xl--line-height: 0.92;
+  --text-5xl--letter-spacing: -0.015em;
+  /* hero headline only: 40px @375 → 70px @768 → 110px @1280 → 120px @≥1409,
+     capped by 14.5svh on short laptops (1280×720 → 104px) */
+  --text-hero: min(clamp(2.5rem, 0.687rem + 7.735vw, 7.5rem), max(2.5rem, 14.5svh));
+  --text-hero--line-height: 0.88; /* row guides in tokens below depend on this exact value */
+  --text-hero--letter-spacing: -0.01em;
+
+  /* ── Space & layout ─────────────────────────────────────── */
+  --spacing: 0.25rem;
+  --spacing-gutter: clamp(1rem, 0.6667rem + 1.4815vw, 1.5rem); /* 16 → 24px */
+  --spacing-margin: clamp(1rem, -0.1rem + 4.7vw, 5rem); /* side margin: 16 @375 · 32 @768 · 40 @1080 · 80 cap; see layout-spec */
+  --spacing-section-xs: clamp(3rem, 2.5rem + 2.2vw, 4.5rem); /* 48 → 72: inside a run */
+  --spacing-section-sm: clamp(4rem, 3rem + 4.4vw, 7rem); /* 64 → 112 */
+  --spacing-section-md: clamp(6rem, 4.6667rem + 5.9259vw, 10rem); /* 96 → 160 */
+  --spacing-section-lg: clamp(7.5rem, 5rem + 11vw, 15rem); /* 120 → 240: the breath before the title block */
+  --container-page: 80rem; /* 1280 content box (12 col × 24 gutter) */
+  --container-prose: 36rem; /* ≈ 68 ch of Archivo 400 at 18px */
+  --container-narrow: 28rem;
+
+  /* ── Shape & depth ──────────────────────────────────────── */
+  /* A drawing sheet: square corners, no shadows. Depth = hairlines + paper. */
+  --radius-none: 0;
+  --radius-pin: 9999px; /* item balloons and the datum dot only */
+
+  /* ── Easing ─────────────────────────────────────────────── */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-pen: cubic-bezier(0.3, 0, 0.4, 1); /* pen speed: nearly even, settles into the end of a stroke */
+  --ease-fill: cubic-bezier(0.7, 0, 0.2, 1); /* the decisive fill: holds, commits, lands; no overshoot */
+}
+
+/* ── Durations (motion.md). Not a Tailwind namespace: plain custom properties. ── */
+:root {
+  --duration-instant: 120ms;
+  --duration-fast: 200ms;
+  --duration-base: 400ms;
+  --duration-fill: 460ms;
+  --duration-pen: 520ms;
+  --duration-slow: 700ms;
+  --duration-drawing: 900ms;
+
+  /* Hero headline construction guides: cap line and baseline of every row, in em of
+     --text-hero with line-height 0.88. Measured in Chromium on the Archivo wdth125/wght800
+     instance: baseline 0.774em from the row top, cap height 0.703em → cap line at 0.071em. */
+  --hl-cap: 0.071em;
+  --hl-base: 0.774em;
+  --hl-row: 0.88em;
+}
+
+/* Fonts come from next/font CSS variables set on <html>, so `inline` is required.
+   One family (Archivo) as two static instances + JetBrains Mono for annotations. */
+@theme inline {
+  --font-display: var(--font-archivo-wide), "Archivo", "Arial Black", Arial, sans-serif;
+  --font-text: var(--font-archivo), "Archivo", ui-sans-serif, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
+@utility num {
+  font-variant-numeric: tabular-nums; /* phone number, sheet numbers, item numbers */
+}
+@utility annotate {
+  /* the drafting hand: every mono label on the page */
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
+  letter-spacing: var(--text-xs--letter-spacing);
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Color: dark, "graphite sheet" (home look). Designed, not inverted ──
+   Ground is a cool blue-graphite, never black; ink is warm paper; the orange is
+   lighter and yellower (signal, not rust) and takes graphite text; surfaces are
+   raised by lightness, never by shadow; guides are barely-there. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: oklch(0.19 0.012 250); /* graphite */
+    --color-surface: oklch(0.225 0.014 250); /* title-block paper */
+    --color-surface-2: oklch(0.26 0.016 250);
+    --color-ink: oklch(0.95 0.006 90); /* paper */
+    --color-ink-soft: oklch(0.86 0.008 90);
+    --color-muted: oklch(0.77 0.014 250); /* pencil (lifted so 11–12px mono labels stay crisp) */
+    --color-line: oklch(0.36 0.02 250); /* guide */
+    --color-grid: oklch(0.245 0.016 250);
+    --color-draft: oklch(0.45 0.028 250);
+    --color-accent: oklch(0.72 0.18 45); /* signal orange */
+    --color-accent-hover: oklch(0.78 0.14 52);
+    --color-accent-press: oklch(0.68 0.17 44);
+    --color-accent-ink: oklch(0.19 0.012 250); /* graphite on orange */
+  }
+}
+
+/* ── Base details every page in this direction uses ───── */
+@layer base {
+  html {
+    color-scheme: light dark;
+    background: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+  ::selection {
+    background: var(--color-accent);
+    color: var(--color-accent-ink);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 3px;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  p,
+  li,
+  dd {
+    text-wrap: pretty;
+  }
+}

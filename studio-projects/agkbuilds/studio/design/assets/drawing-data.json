@@ -1,0 +1,78 @@
+{
+  "generator": "drawing.mjs",
+  "hero": {
+    "viewBox": [
+      600,
+      600
+    ],
+    "centre": [
+      300,
+      300
+    ],
+    "leaderEnd": {
+      "x": 592,
+      "y": 528.52,
+      "leftPct": 98.67,
+      "topPct": 88.09
+    },
+    "leaderElbow": {
+      "x": 478.54,
+      "y": 528.52,
+      "leftPct": 79.76
+    },
+    "tangentsY": [
+      64,
+      536
+    ]
+  },
+  "plate": {
+    "viewBox": [
+      640,
+      480
+    ],
+    "frame": {
+      "x": 60,
+      "y": 50,
+      "w": 520,
+      "h": 380
+    },
+    "layers": {
+      "pl-1": "measure",
+      "pl-2": "plan",
+      "pl-3": "build",
+      "pl-4": "solid"
+    }
+  },
+  "palette": {
+    "light": {
+      "bg": "#f5f3ee",
+      "surface": "#fdfcf9",
+      "surface-2": "#ece9e3",
+      "ink": "#181e23",
+      "ink-soft": "#383e44",
+      "muted": "#575e67",
+      "line": "#b8bec5",
+      "grid": "#dfe3e8",
+      "draft": "#95a0ab",
+      "accent": "#b44200",
+      "accent-hover": "#9b3300",
+      "accent-press": "#8b2b00",
+      "accent-ink": "#fdfcf9"
+    },
+    "dark": {
+      "bg": "#101419",
+      "surface": "#171c22",
+      "surface-2": "#1e252c",
+      "ink": "#f0eeea",
+      "ink-soft": "#d3d1cb",
+      "muted": "#aeb5bd",
+      "line": "#353e47",
+      "grid": "#1b2128",
+      "draft": "#4a5765",
+      "accent": "#fd7933",
+      "accent-hover": "#fd9c5d",
+      "accent-press": "#eb6f32",
+      "accent-ink": "#101419"
+    }
+  }
+}
