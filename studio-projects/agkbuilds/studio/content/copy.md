@@ -38,6 +38,7 @@ headline_options:
   - text: "Custom\nsoftware,\ndrawn to fit.\nThen built."   # 13/13 per line × 4 (6/9/13/11 against 10/10/13/11)
     rationale: "Says custom software in the first two lines, then shows the method: lines 1 to 3 draw as outlines and 'Then built.' fills solid in orange, so the signature moment is the sentence."
     recommended: true
+    final: true
   - text: "Custom\nsoftware,\nplanned, then\nbuilt."   # 13/13 per line × 4 (6/9/13/6 against 10/10/13/11)
     rationale: "The method as one plain sentence. The single word 'built.' alone on line 4 is the smallest and loudest orange payoff of the three; it drops the 'fit' idea for the plan-then-build order."
   - text: "Custom\nsoftware.\nName the job.\nWe build."   # 13/13 per line × 4 (6/9/13/9 against 10/10/13/11)
@@ -51,7 +52,7 @@ cta_hint: "Opens your email app"          # 20/28
 ```
 
 Notes:
-- `headline` is provisional and equals the recommended option A. Do not set `final: true` until the user picks; when they do, copy the chosen option's text into `headline` and add `final: true` to that option.
+- `headline` is final: the user picked option A (decisions #17), so `headline` equals option A and that option carries `final: true`.
 - Every option has "custom software" in lines 1 and 2, no word longer than 9 characters, and a short line 4 for the orange fill.
 - `drawing_label` is decorative (the callout on the construction leader, lg and up, `aria-hidden`). `fig_label` is the dimension-line label under the headline.
 - `cta_hint` is honest about what the button does and is the button's `aria-describedby`. The CTA's accessible name is its visible text.
