@@ -261,8 +261,18 @@ function hatch(x, y, w, h, gap) {
 function processPlate({ mode, upTo = 4 }) {
   const { frame: F, modules: M, disc: D } = PL;
   const col = (name) => (mode === "css" ? v(name) : null);
-  const strokeAttr = (name) => (mode === "css" ? ` stroke="${col(name)}"` : ` class="s-${name}"`);
-  const fillAttr = (name) => (mode === "css" ? ` fill="${col(name)}"` : ` class="f-${name}"`);
+  // paint(kind, name, base) returns the class + colour attributes for one element.
+  // In `img` mode the colour is a class too, so it is merged into the SAME class
+  // attribute as `base` (two class attributes on one element is invalid XML and
+  // breaks the file as <img src>). `css` mode output is unchanged.
+  // `extra` (other attributes) sits between the class and the colour attribute.
+  const paint = (kind, name, base = "", extra = "") => {
+    if (mode === "css") return (base ? ` class="${base}"` : "") + extra + ` ${kind}="${col(name)}"`;
+    const cls = [base, `${kind === "stroke" ? "s" : "f"}-${name}`].filter(Boolean).join(" ");
+    return ` class="${cls}"${extra}`;
+  };
+  const strokeAttr = (name, base, extra) => paint("stroke", name, base, extra);
+  const fillAttr = (name, base, extra) => paint("fill", name, base, extra);
   const P = (d, extra = "") => `<path pathLength="1" d="${d}"${extra}/>`;
   const layers = [];
 
@@ -291,7 +301,7 @@ function processPlate({ mode, upTo = 4 }) {
       `<path d="${arrow(dx, F.y + 40, dx, F.y)}"/>` +
       `<path d="${arrow(dx, F.y + F.h - 40, dx, F.y + F.h)}"/>`;
     layers.push(
-      `<g id="pl-1" class="pl-layer"${strokeAttr("draft")}>${g.join("")}<g class="pl-heads" stroke="none"${fillAttr("draft")}>${heads}</g></g>`
+      `<g id="pl-1"${strokeAttr("draft", "pl-layer")}>${g.join("")}<g${fillAttr("draft", "pl-heads", ' stroke="none"')}>${heads}</g></g>`
     );
   }
   // L2 · plan: construction lines through module edges + thin module outlines + disc
@@ -307,7 +317,7 @@ function processPlate({ mode, upTo = 4 }) {
     g.push(P(circlePath(D.cx, D.cy, D.r, 180)));
     g.push(P(line(D.cx - D.r - 8, D.cy, D.cx + D.r + 8, D.cy)));
     g.push(P(line(D.cx, D.cy - D.r - 8, D.cx, D.cy + D.r + 8)));
-    layers.push(`<g id="pl-2" class="pl-layer"${strokeAttr("draft")}>${g.join("")}</g>`);
+    layers.push(`<g id="pl-2"${strokeAttr("draft", "pl-layer")}>${g.join("")}</g>`);
   }
   // L3 · build: committed outlines (ink), hatching, connectors with nodes
   {
@@ -346,7 +356,7 @@ function processPlate({ mode, upTo = 4 }) {
       .map(([x, y]) => `<circle cx="${r2(x)}" cy="${r2(y)}" r="3"/>`)
       .join("");
     layers.push(
-      `<g id="pl-3" class="pl-layer pl-built"${strokeAttr("ink")}>${g.join("")}<g class="pl-nodes" stroke="none"${fillAttr("ink")}>${nodes}</g></g>`
+      `<g id="pl-3"${strokeAttr("ink", "pl-layer pl-built")}>${g.join("")}<g${fillAttr("ink", "pl-nodes", ' stroke="none"')}>${nodes}</g></g>`
     );
   }
   // L4 · solid: modules filled, inset by PL.fillInset so the built outline and its
