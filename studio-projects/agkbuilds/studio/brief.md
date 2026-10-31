@@ -43,9 +43,13 @@ Businesses that might hire Agkbuilds. Assumed (see decisions #2): owners and man
 5. Footer
 
 ## Success criteria
-- [ ] The concept (Agkbuilds builds custom software for clients) is clear within 5 seconds of landing on the hero.
-- [ ] A visitor reaches the contact action in ≤ 1 click from the hero, and it opens an email to agkbuilds@gmail.com; the phone number 254-231-1149 is visible and is a working `tel:` link on phones.
-- [ ] No sentence on the page names a client, project, result, number, award or team member that the user did not supply. The only supplied specifics are: the three kinds of software, the email, the phone number and the name Dylan Borgen.
-- [ ] The production build exports as a static folder of files (`output: "export"`), with no server code.
-- [ ] The page doesn't read as a generic corporate template: Originality ≥ 8 in the Critic's rubric and none of the banned patterns in `taste-guardrails` appear.
-- [ ] Critic gate passes: rubric average ≥ 8, no criterion < 7, 0 serious or critical axe issues, Lighthouse mobile Performance ≥ 90 and Accessibility = 100.
+- [x] The concept (Agkbuilds builds custom software for clients) is clear within 5 seconds of landing on the hero.
+- [x] A visitor reaches the contact action in ≤ 1 click from the hero, and it opens an email to agkbuilds@gmail.com; the phone number 254-231-1149 is visible and is a working `tel:` link on phones.
+- [x] No sentence on the page names a client, project, result, number, award or team member that the user did not supply. The only supplied specifics are: the three kinds of software, the email, the phone number and the name Dylan Borgen.
+- [x] The production build exports as a static folder of files (`output: "export"`), with no server code.
+- [x] The page doesn't read as a generic corporate template: Originality ≥ 8 in the Critic's rubric and none of the banned patterns in `taste-guardrails` appear.
+- [x] Critic gate passes: rubric average ≥ 8, no criterion < 7, 0 serious or critical axe issues, Lighthouse mobile Performance ≥ 90 and Accessibility = 100.
+
+Checked against `qa/round-2.md` (round 2, PASS): concept clarity 9 and the facts rule clean in round 1 (every text node is copy from `copy.md` or computed data); both mailto links open an email to agkbuilds@gmail.com with a subject and the phone is a working `tel:` link; `npm run build` writes a plain-files `out/` folder with no server code; Originality 8 with none of the banned patterns; gate: average 8.6 (lowest 8), axe 0, Lighthouse Performance 99 and Accessibility 100 on the Critic's own median of 3.
+
+Open at sign-off: R2-01 (minor, waived in decisions #24).
