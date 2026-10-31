@@ -1,0 +1,13 @@
+# Decisions log
+
+Every decision on this project, newest last. Each entry says who decided, what was decided and why. Waivers of Critic defects go here too.
+
+| # | Step | Decision | Decided by | Why | Alternatives rejected |
+|---|---|---|---|---|---|
+| 1 | Intake | Agkbuilds builds **custom software for clients**; audience = **businesses that might hire or buy**; primary action = **contact us or book a call**; feeling = **bold and futuristic**; must never feel like **a generic corporate template**; include a **"What we build"** section; **no brand assets yet** (design a wordmark, colors and fonts); facts policy = **general wording only** | User (intake answers) | Direct answers to the intake questions | — |
+| 2 | Intake | Audience detail assumed: business owners and managers who may not be technical, who judge quality by how the page looks and reads | Director (assumed) | The user gave only "businesses that might hire or buy". The page has to work for non-technical decision-makers and still satisfy technical readers | A purely developer-focused page |
+| 3 | Intake | Third personality adjective = **dependable** | Director (assumed) | The brief needs three adjectives and the user gave two. Clients hire builders they must trust, and "dependable" balances "bold" and "futuristic" without contradicting them | "Playful", "minimal" (no signal for either) |
+| 4 | Intake | Both light and dark schemes, with dark as the home look | Director (assumed) | The user didn't specify. Dark suits "bold and futuristic"; the light scheme is kept for accessibility and preference | Dark only; light only |
+| 5 | Intake | One page: hero, what we build, how we work, contact, footer. No projects, team, pricing or testimonials sections | Director (assumed) | The user chose only "What we build" and has no real facts to supply, and the facts policy forbids invented ones. "How we work" stays generic | Placeholder case studies (they'd be invented claims) |
+| 6 | Intake | Contact method (email address or booking link) and the list of software kinds Agkbuilds builds are **required from the user** before copy and build | Director | A static page has no other way to "contact us", and the services list can't be guessed for a real company | Inventing services or a placeholder address |
+| 7 | Intake | "Static" = no server code. The Builder confirms `output: "export"` produces a plain-files `out/` folder. If `serve.mjs` (`next start`) can't serve that mode, the Critic tests the normal production build and the Builder checks the export separately | Director | The user asked for a static webpage, so it must be hostable on any file host | Shipping a page that needs a Node server |
