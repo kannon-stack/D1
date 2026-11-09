@@ -11,8 +11,28 @@
 //   DISCORD_THREAD_ID        optional; post into an existing forum thread
 //   DISCORD_NOTIFY_UPDATES   set to 1 to also post republishes of an existing artifact
 //   DISCORD_FORUM            set to 0 for a normal text channel (no thread_name sent)
+//   DISCORD_ENV_FILE         optional KEY=VALUE file; default .claude/discord.env (gitignored)
 
+import { readFileSync } from "node:fs";
 import { buildPayload, sendDiscord } from "./discord-notify.mjs";
+
+// Optional gitignored KEY=VALUE file (default .claude/discord.env) for sessions where the
+// variables can't be set in the environment. Real environment variables always win.
+export function loadLocalEnv(env = process.env) {
+  const file = env.DISCORD_ENV_FILE || `${env.CLAUDE_PROJECT_DIR || "."}/.claude/discord.env`;
+  let text;
+  try {
+    text = readFileSync(file, "utf8");
+  } catch {
+    return env;
+  }
+  const merged = { ...env };
+  for (const line of text.split(/\r?\n/)) {
+    const m = line.match(/^\s*([A-Z][A-Z0-9_]*)\s*=\s*(.*?)\s*$/);
+    if (m && merged[m[1]] === undefined) merged[m[1]] = m[2].replace(/^(['"])(.*)\1$/, "$2");
+  }
+  return merged;
+}
 
 const ARTIFACT_URL = /^https:\/\/claude\.ai\/(code\/)?artifact\/[\w-]+$/;
 
@@ -45,11 +65,11 @@ async function readStdin() {
 const isMain = process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href;
 if (isMain) {
   try {
-    const webhook = process.env.DISCORD_WEBHOOK_URL;
+    const env = loadLocalEnv();
     const raw = await readStdin();
-    if (webhook) {
-      const body = planNotification(JSON.parse(raw));
-      if (body) await sendDiscord(webhook, body, { threadId: process.env.DISCORD_THREAD_ID });
+    if (env.DISCORD_WEBHOOK_URL) {
+      const body = planNotification(JSON.parse(raw), env);
+      if (body) await sendDiscord(env.DISCORD_WEBHOOK_URL, body, { threadId: env.DISCORD_THREAD_ID });
     }
   } catch (e) {
     console.error(`discord-notify-hook: ${e.message}`);
