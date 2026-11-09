@@ -7,6 +7,9 @@
 //       [--description "text"] [--color 5793266]
 //   node scripts/discord-notify.mjs --content "plain message"
 //
+// Forum channels: add --thread-name "<title>" (new thread per post) or set
+// DISCORD_THREAD_ID to post into an existing thread.
+//
 // The webhook URL is read from DISCORD_WEBHOOK_URL only (never a CLI flag, so it
 // stays out of shell history / process lists). Exits 0 and does nothing when the
 // variable is unset, so it is safe to call unconditionally from automation.
@@ -27,8 +30,10 @@ export function parseWebhookUrl(raw) {
   return u;
 }
 
-export function buildPayload({ content, title, url, description, color }) {
+export function buildPayload({ content, title, url, description, color, threadName }) {
   const payload = { allowed_mentions: { parse: [] } }; // never ping @everyone/@here/roles
+  // Forum/media channels require either thread_name (new thread per post) or DISCORD_THREAD_ID.
+  if (threadName) payload.thread_name = String(threadName).slice(0, 100);
   if (content) payload.content = String(content).slice(0, 2000);
   if (title || url || description) {
     const embed = {};
@@ -42,8 +47,9 @@ export function buildPayload({ content, title, url, description, color }) {
   return payload;
 }
 
-export async function sendDiscord(webhookUrl, payload, { fetchImpl = fetch, retries = 2 } = {}) {
+export async function sendDiscord(webhookUrl, payload, { fetchImpl = fetch, retries = 2, threadId } = {}) {
   const target = parseWebhookUrl(webhookUrl);
+  if (threadId) target.searchParams.set("thread_id", String(threadId));
   for (let attempt = 0; ; attempt++) {
     const res = await fetchImpl(target, {
       method: "POST",
@@ -57,7 +63,10 @@ export async function sendDiscord(webhookUrl, payload, { fetchImpl = fetch, retr
       await new Promise((r) => setTimeout(r, Math.min(wait, 10) * 1000));
       continue;
     }
-    throw new Error(`Discord webhook failed: HTTP ${res.status}`);
+    const detail = await Promise.resolve()
+      .then(() => res.json())
+      .then((j) => j?.message, () => "");
+    throw new Error(`Discord webhook failed: HTTP ${res.status}${detail ? ` - ${detail}` : ""}`);
   }
 }
 
@@ -79,7 +88,10 @@ if (isMain) {
       console.error("DISCORD_WEBHOOK_URL not set; skipping Discord notification");
       process.exit(0);
     }
-    await sendDiscord(webhook, buildPayload(parseArgs(process.argv.slice(2))));
+    const args = parseArgs(process.argv.slice(2));
+    await sendDiscord(webhook, buildPayload({ ...args, threadName: args["thread-name"] }), {
+      threadId: process.env.DISCORD_THREAD_ID,
+    });
     console.log("Posted to Discord");
   } catch (e) {
     console.error(e.message);
