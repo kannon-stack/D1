@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { getSettings } from "@/lib/localDb";
-import { isSsoTypeEnabled } from "@/lib/auth/authMode";
+import { isOidcAllowAnyUserEnabled, isSsoTypeEnabled } from "@/lib/auth/authMode";
 
 export { getPublicOrigin } from "@/lib/auth/publicOrigin";
 
@@ -16,6 +16,8 @@ const DEFAULT_SCOPES = "openid profile email";
 const OIDC_FETCH_TIMEOUT_MS = 10_000;
 // Google documents both forms as valid `iss` values for its ID tokens.
 const GOOGLE_ISSUERS = ["https://accounts.google.com", "accounts.google.com"];
+// ID tokens are verified against the provider's published (asymmetric) keys only.
+const OIDC_ID_TOKEN_ALGORITHMS = ["RS256", "RS384", "RS512", "PS256", "PS384", "PS512", "ES256", "ES384", "ES512", "EdDSA"];
 
 function trimTrailingSlashes(value) {
   return (value || "").trim().replace(/\/+$/, "");
@@ -37,12 +39,23 @@ export function isOidcConfigured(settings) {
   );
 }
 
-// Google sign-in rejects everyone until an allowlist exists (checkOidcAllowedIdentity),
-// so until then it must not count as a working SSO method: the login page and the
-// password route keep password login open instead of locking the admin out.
+// OIDC sign-in rejects everyone until an allowlist exists (checkOidcAllowedIdentity), so
+// until then it must not count as a working SSO method: the login page and the password
+// route keep password login open instead of locking the admin out. The one exception is
+// a non-Google provider with OIDC_ALLOW_ANY_USER=true.
 export function isOidcLoginUsable(settings) {
-  return isOidcConfigured(settings) &&
-    !(isGoogleIssuer(settings?.oidcIssuerUrl) && !parseOidcAllowedEmails(settings?.oidcAllowedEmails).length);
+  if (!isOidcConfigured(settings)) return false;
+  if (parseOidcAllowedEmails(settings?.oidcAllowedEmails).length) return true;
+  return !isGoogleIssuer(settings?.oidcIssuerUrl) && isOidcAllowAnyUserEnabled();
+}
+
+// The discovery document must name the issuer it was fetched from (OIDC Discovery §4.3);
+// otherwise its jwks_uri and issuer could point somewhere the admin never configured.
+export function oidcIssuerMatches(discoveredIssuer, configuredIssuer) {
+  const discovered = trimTrailingSlashes(discoveredIssuer);
+  const configured = trimTrailingSlashes(configuredIssuer);
+  if (!discovered || !configured) return false;
+  return discovered === configured || (isGoogleIssuer(discovered) && isGoogleIssuer(configured));
 }
 
 export async function getOidcRuntimeConfig() {
@@ -68,12 +81,13 @@ export function parseOidcAllowedEmails(value) {
 }
 
 // Returns null when the identity may sign in, otherwise the /login error code.
-// Any Google account can complete Google sign-in, so Google requires a list; other
-// issuers control access themselves unless the admin also sets a list.
-export function checkOidcAllowedIdentity(payload, { issuer, allowedEmails } = {}) {
+// An allowlist is required for every provider: Google, Microsoft's multi-tenant
+// endpoints and any tenant with open sign-up all authenticate accounts the admin has
+// never heard of. OIDC_ALLOW_ANY_USER=true opts a non-Google provider out of that.
+export function checkOidcAllowedIdentity(payload, { issuer, allowedEmails, allowAnyUser = isOidcAllowAnyUserEnabled() } = {}) {
   const entries = parseOidcAllowedEmails(allowedEmails);
   const google = isGoogleIssuer(issuer);
-  if (!entries.length) return google ? "oidc_allowlist_required" : null;
+  if (!entries.length) return !google && allowAnyUser ? null : "oidc_allowlist_required";
 
   const verified = google ? payload?.email_verified === true : payload?.email_verified !== false;
   const email = String(payload?.email || "").trim().toLowerCase();
@@ -245,6 +259,7 @@ export async function verifyOidcIdToken({
   const { payload } = await jwtVerify(idToken, jwks, {
     issuer: GOOGLE_ISSUERS.includes(issuer) ? GOOGLE_ISSUERS : issuer,
     audience,
+    algorithms: OIDC_ID_TOKEN_ALGORITHMS,
   });
   // jose does not check `nonce`; it must match the one sent with the authorization request.
   if (!nonce || payload.nonce !== nonce) {

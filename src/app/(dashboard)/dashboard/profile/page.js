@@ -36,12 +36,14 @@ function isGoogleIssuer(issuerUrl) {
   }
 }
 
-// Google signs in any Google account, so the server refuses Google OIDC logins
-// until an allow-list is set; catch that here instead of saving a lockout.
-function googleAllowlistError(authMode, issuerUrl, allowedEmails) {
-  if (authMode === "password" || !isGoogleIssuer(issuerUrl)) return "";
+// The server refuses OIDC logins until an allow-list is set (Google always; other
+// providers unless the server sets OIDC_ALLOW_ANY_USER=true); catch that here instead
+// of saving a lockout.
+function getAllowlistError(authMode, issuerUrl, allowedEmails, allowAnyUser) {
+  if (authMode === "password" || !String(issuerUrl || "").trim()) return "";
   if (parseAllowedEmails(allowedEmails).length > 0) return "";
-  return "Google sign-in needs at least one allowed email or @domain entry. Add one under Allowed emails.";
+  if (allowAnyUser && !isGoogleIssuer(issuerUrl)) return "";
+  return "Sign-in needs at least one allowed email or @domain entry. Add one under Allowed emails.";
 }
 
 export default function ProfilePage() {
@@ -389,7 +391,7 @@ export default function ProfilePage() {
       return;
     }
 
-    const allowlistError = googleAllowlistError(authMode, issuerUrl || settings.oidcIssuerUrl, allowedEmails);
+    const allowlistError = getAllowlistError(authMode, issuerUrl || settings.oidcIssuerUrl, allowedEmails, settings.oidcAllowAnyUser);
     if (allowlistError) {
       setOidcStatus({ type: "error", message: allowlistError });
       return;
@@ -464,7 +466,7 @@ export default function ProfilePage() {
     }
 
     // Testing saves the form first, so apply the same check as Save.
-    const allowlistError = googleAllowlistError(authMode, issuerUrl, allowedEmails);
+    const allowlistError = getAllowlistError(authMode, issuerUrl, allowedEmails, settings.oidcAllowAnyUser);
     if (allowlistError) {
       setOidcTestStatus({ type: "error", message: allowlistError });
       return;
@@ -1463,7 +1465,7 @@ export default function ProfilePage() {
                         disabled={loading || oidcLoading}
                       />
                       <p className="text-xs sm:text-sm text-text-muted">
-                        One entry per line or separated by commas. Use an exact address (you@gmail.com) or @example.com to allow a whole domain; the email must be verified by the provider. Required for Google. Left empty with another provider, anyone it signs in gets access.
+                        One entry per line or separated by commas. Use an exact address (you@gmail.com) or @example.com to allow a whole domain; the email must be verified by the provider. Required: OIDC sign-in is refused until at least one entry is set. (A server admin can set OIDC_ALLOW_ANY_USER=true to allow every account of a non-Google provider.)
                       </p>
                     </div>
                   </div>

@@ -8,6 +8,7 @@ import {
   fetchOidcDiscovery,
   getOidcRuntimeConfig,
   getPublicOrigin,
+  oidcIssuerMatches,
   pickOidcDisplayName,
   pickOidcEmail,
   verifyOidcIdToken,
@@ -64,6 +65,9 @@ export async function GET(request) {
     }
 
     const discovery = await fetchOidcDiscovery(config.issuerUrl);
+    if (discovery.issuer && !oidcIssuerMatches(discovery.issuer, config.issuerUrl)) {
+      throw new Error(`OIDC discovery issuer ${discovery.issuer} does not match the configured issuer ${config.issuerUrl}`);
+    }
     const discoveredIssuer = discovery.issuer || config.issuerUrl;
     const redirectUri = `${getPublicOrigin(request)}/api/auth/oidc/callback`;
     const tokenData = await exchangeOidcCode({

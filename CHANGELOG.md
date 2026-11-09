@@ -11,10 +11,21 @@
   login attempt (jose ignored the `nonce` option, so it was never checked). SAML
   start/ACS honor the auth mode, so SAML login no longer works in "Password only".
 - **Auth**: OIDC gets an **Allowed emails** list (`oidcAllowedEmails`: exact
-  addresses or `@domain` entries). Google sign-in, which any Google account can
-  complete, is refused until the list is set; other issuers enforce it when set.
-  Until a Google install sets it, password login stays available so upgrades
-  don't lock the admin out.
+  addresses or `@domain` entries). OIDC sign-in is refused for every provider
+  until the list is set, since Google, multi-tenant Microsoft endpoints and
+  open-signup tenants all authenticate accounts the admin has never heard of.
+  Until it is set, password login stays available so upgrades don't lock the
+  admin out; an existing non-Google "OIDC only" install loses its SSO button
+  until it adds entries. `OIDC_ALLOW_ANY_USER=true` (server env, not settable
+  from the dashboard) opts a non-Google provider out; it never applies to Google.
+- **Auth**: the OIDC discovery document must name the configured issuer, and ID
+  tokens are verified against asymmetric algorithms only.
+- **Auth**: `X-Forwarded-Host` / `X-Forwarded-Proto` build the OIDC/SAML redirect
+  and ACS URLs only when the request came through a loopback reverse proxy
+  (proven by `custom-server.js`, like `X-Forwarded-For`) or
+  `AUTH_TRUST_FORWARDED_HEADERS=true`; otherwise `Host` and the request protocol
+  are used. Proxies the server cannot see (another container, TLS in front)
+  need `AUTH_PUBLIC_URL` or `AUTH_TRUST_FORWARDED_HEADERS=true`.
 - **Auth**: the published `.env.example`/README `JWT_SECRET` values are ignored in
   favor of the generated `DATA_DIR/jwt-secret` (anyone could forge a session with
   them), and example `INITIAL_PASSWORD` values no longer bypass the remote
@@ -26,8 +37,10 @@
   attacker-supplied text; servers log the details instead.
 - **Provider OAuth popup**: the callback `state` is checked, closed modals stop
   listening, and loopback `postMessage` origins are matched exactly.
-- With "Require login" off, cross-site POST/PUT/PATCH/DELETE to `/api/*` is
-  rejected (`Sec-Fetch-Site: cross-site`).
+- With "Require login" off, cross-site and same-site (another port or subdomain
+  of the host) POST/PUT/PATCH/DELETE to `/api/*` is rejected
+  (`Sec-Fetch-Site`). Clients that omit the header and DNS rebinding are not
+  covered.
 - Remove `/api/settings/require-login`: unused, unauthenticated, and it exposed
   the tunnel/Tailscale URLs.
 

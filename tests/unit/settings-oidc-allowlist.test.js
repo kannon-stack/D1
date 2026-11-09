@@ -46,6 +46,25 @@ describe("/api/settings oidcAllowedEmails", () => {
   });
 });
 
+describe("/api/settings oidcAllowAnyUser", () => {
+  it("reports the server-side OIDC_ALLOW_ANY_USER opt-in, so the profile page does not block a valid setup", async () => {
+    vi.stubEnv("OIDC_ALLOW_ANY_USER", "");
+    expect((await GET()).body.oidcAllowAnyUser).toBe(false);
+
+    vi.stubEnv("OIDC_ALLOW_ANY_USER", "true");
+    expect((await GET()).body.oidcAllowAnyUser).toBe(true);
+    vi.unstubAllEnvs();
+  });
+
+  it("cannot be turned on through PATCH", async () => {
+    vi.stubEnv("OIDC_ALLOW_ANY_USER", "");
+    await patch({ oidcAllowAnyUser: true });
+
+    expect((await GET()).body.oidcAllowAnyUser).toBe(false);
+    vi.unstubAllEnvs();
+  });
+});
+
 describe("/api/settings authPublicOrigin", () => {
   it("reports the origin the auth routes will use, so the profile page shows the real redirect URI", async () => {
     vi.stubEnv("AUTH_PUBLIC_URL", "");

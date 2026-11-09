@@ -186,12 +186,16 @@ async function isAuthenticated(request) {
 }
 
 // With requireLogin=false any page the user visits could otherwise drive state-changing
-// /api calls. Browsers mark those "cross-site"; CLI and curl send no Sec-Fetch-Site.
-// Origin is not compared with Host because reverse proxies rewrite Host.
+// /api calls. Browsers mark those "cross-site", or "same-site" when another port or
+// subdomain of the same host sends them (e.g. any other local web app); the dashboard's
+// own calls are "same-origin". CLI and curl send no Sec-Fetch-Site.
+// Origin is not compared with Host because reverse proxies rewrite Host. Not covered:
+// clients that omit Sec-Fetch-Site, and DNS rebinding (the rebound page is same-origin).
 function isCrossSiteWrite(request) {
   const method = (request.method || "GET").toUpperCase();
   if (method === "GET" || method === "HEAD" || method === "OPTIONS") return false;
-  return request.headers.get("sec-fetch-site") === "cross-site";
+  const site = (request.headers.get("sec-fetch-site") || "").toLowerCase();
+  return site === "cross-site" || site === "same-site";
 }
 
 function isPublicApi(pathname) {

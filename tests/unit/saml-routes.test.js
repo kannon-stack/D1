@@ -39,12 +39,16 @@ const SAML_SETTINGS = {
   samlCert: "MIIC123456789012345678901234567890123456789012345678901234567890",
 };
 
+// What custom-server.js adds when the TCP peer is a local reverse proxy; without these,
+// X-Forwarded-Proto is ignored as client-supplied input.
+const PROXY_PROOF = { "x-9r-peer-token": "peer-token", "x-9r-loopback-proxy": "1" };
+
 function acsRequest(form = { SAMLResponse: "PHNhbWw+" }) {
   const body = new FormData();
   for (const [k, v] of Object.entries(form)) body.set(k, v);
   return {
     url: "http://localhost:20127/api/auth/saml/acs",
-    headers: new Headers({ host: "router.example.com", "x-forwarded-proto": "https" }),
+    headers: new Headers({ host: "router.example.com", "x-forwarded-proto": "https", ...PROXY_PROOF }),
     formData: async () => body,
   };
 }
@@ -53,6 +57,7 @@ describe("SAML ACS", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv("AUTH_PUBLIC_URL", "");
+    vi.stubEnv("NINEROUTER_PEER_TOKEN", "peer-token");
     vi.stubEnv("BASE_URL", "http://localhost:20128");
     mocks.getSettings.mockResolvedValue(SAML_SETTINGS);
     mocks.checkLock.mockReturnValue({ locked: false });
@@ -96,6 +101,7 @@ describe("SAML start and metadata", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv("AUTH_PUBLIC_URL", "");
+    vi.stubEnv("NINEROUTER_PEER_TOKEN", "peer-token");
     vi.stubEnv("BASE_URL", "http://localhost:20128");
     mocks.getSettings.mockResolvedValue(SAML_SETTINGS);
   });
@@ -106,7 +112,7 @@ describe("SAML start and metadata", () => {
 
   const browserRequest = (path) => ({
     url: `http://0.0.0.0:20128${path}`,
-    headers: new Headers({ host: "router.example.com", "x-forwarded-proto": "https" }),
+    headers: new Headers({ host: "router.example.com", "x-forwarded-proto": "https", ...PROXY_PROOF }),
   });
 
   it("starts sign-in without a saml_state cookie", async () => {

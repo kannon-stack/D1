@@ -4,6 +4,13 @@
 
 const SSO_ONLY_MODES = ["sso", "oidc", "saml"];
 
+// Explicit, server-side opt-in (not settable from the dashboard) to let every account a
+// non-Google OIDC provider signs in reach the dashboard when no allowlist is set. Never
+// applies to Google, where any Google account can sign in.
+export function isOidcAllowAnyUserEnabled() {
+  return process.env.OIDC_ALLOW_ANY_USER === "true";
+}
+
 export function isSsoOnlyMode(authMode) {
   return SSO_ONLY_MODES.includes(authMode);
 }

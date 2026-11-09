@@ -145,6 +145,7 @@ describe("OIDC routes", () => {
   });
 
   it("sends Google the browser's origin, not the internal BASE_URL", async () => {
+    vi.stubEnv("NINEROUTER_PEER_TOKEN", "peer-token");
     vi.stubEnv("BASE_URL", "http://localhost:20128");
     vi.stubEnv("NEXT_PUBLIC_BASE_URL", "http://localhost:20128");
     mocks.getSettings.mockResolvedValue({ ...OIDC_SETTINGS, authMode: "sso" });
@@ -155,10 +156,31 @@ describe("OIDC routes", () => {
     const res = await oidcStart(request("http://localhost:20127/api/auth/oidc/start", {
       host: "router.example.com",
       "x-forwarded-proto": "https",
+      // Added by custom-server.js when the peer is a local reverse proxy.
+      "x-9r-peer-token": "peer-token",
+      "x-9r-loopback-proxy": "1",
     }));
 
     const redirectUri = new URL(res.url).searchParams.get("redirect_uri");
     expect(redirectUri).toBe("https://router.example.com/api/auth/oidc/callback");
+    fetchSpy.mockRestore();
+  });
+
+  it("does not let a client choose the redirect_uri scheme with a forged X-Forwarded-Proto", async () => {
+    vi.stubEnv("NINEROUTER_PEER_TOKEN", "peer-token");
+    mocks.getSettings.mockResolvedValue({ ...OIDC_SETTINGS, authMode: "sso" });
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ authorization_endpoint: "https://accounts.google.com/o/oauth2/v2/auth" }))
+    );
+
+    const res = await oidcStart(request("http://localhost:20127/api/auth/oidc/start", {
+      host: "router.example.com",
+      "x-forwarded-host": "evil.example.net",
+      "x-forwarded-proto": "https",
+    }));
+
+    expect(new URL(res.url).searchParams.get("redirect_uri"))
+      .toBe("http://router.example.com/api/auth/oidc/callback");
     fetchSpy.mockRestore();
   });
 
@@ -206,8 +228,31 @@ describe("OIDC allowlist", () => {
       .toBe("oidc_allowlist_required");
   });
 
-  it("lets other issuers through with an empty list", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("requires a list for other issuers too", () => {
+    // Microsoft's multi-tenant endpoints and open-signup tenants sign in strangers as well.
+    expect(checkOidcAllowedIdentity({ email: "a@example.com" }, { ...corp, allowedEmails: "" }))
+      .toBe("oidc_allowlist_required");
+  });
+
+  it("lets a non-Google issuer through with an empty list only when the server opts in", () => {
+    expect(checkOidcAllowedIdentity({ email: "a@example.com" }, { ...corp, allowedEmails: "", allowAnyUser: true }))
+      .toBeNull();
+    // Any Google account can sign in, so the opt-in never applies to Google.
+    expect(checkOidcAllowedIdentity(verified("you@gmail.com"), { ...google, allowedEmails: "", allowAnyUser: true }))
+      .toBe("oidc_allowlist_required");
+  });
+
+  it("reads the opt-in from OIDC_ALLOW_ANY_USER, and only the exact string \"true\" counts", () => {
+    vi.stubEnv("OIDC_ALLOW_ANY_USER", "true");
     expect(checkOidcAllowedIdentity({ email: "a@example.com" }, { ...corp, allowedEmails: "" })).toBeNull();
+
+    vi.stubEnv("OIDC_ALLOW_ANY_USER", "1");
+    expect(checkOidcAllowedIdentity({ email: "a@example.com" }, { ...corp, allowedEmails: "" }))
+      .toBe("oidc_allowlist_required");
   });
 
   it("matches exact emails and @domain entries, case-insensitively", () => {
@@ -255,8 +300,8 @@ describe("OIDC callback allowlist", () => {
     vi.unstubAllEnvs();
   });
 
-  async function signIn(claims, allowedEmails) {
-    mocks.getSettings.mockResolvedValue({ ...OIDC_SETTINGS, authMode: "sso", oidcAllowedEmails: allowedEmails });
+  async function signIn(claims, allowedEmails, { issuerUrl = OIDC_SETTINGS.oidcIssuerUrl, discoveryIssuer = "https://accounts.google.com" } = {}) {
+    mocks.getSettings.mockResolvedValue({ ...OIDC_SETTINGS, oidcIssuerUrl: issuerUrl, authMode: "sso", oidcAllowedEmails: allowedEmails });
     const idToken = await new SignJWT({ iss: "https://accounts.google.com", nonce: "nonce-1", sub: "1", ...claims })
       .setProtectedHeader({ alg: "RS256", kid: "k1" })
       .setIssuedAt()
@@ -266,7 +311,7 @@ describe("OIDC callback allowlist", () => {
     fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
       if (String(url).endsWith("/.well-known/openid-configuration")) {
         return new Response(JSON.stringify({
-          issuer: "https://accounts.google.com",
+          issuer: discoveryIssuer,
           token_endpoint: "https://oauth2.googleapis.com/token",
           jwks_uri: "https://www.googleapis.com/oauth2/v3/certs",
         }));
@@ -288,6 +333,27 @@ describe("OIDC callback allowlist", () => {
 
     expect(res.url).toBe("http://localhost:20128/login?error=oidc_allowlist_required");
     expect(mocks.setDashboardAuthCookie).not.toHaveBeenCalled();
+  });
+
+  it("refuses a discovery document that names a different issuer than the one configured", async () => {
+    const res = await signIn(
+      { email: "you@gmail.com", email_verified: true },
+      "you@gmail.com",
+      { discoveryIssuer: "https://evil.example.com" },
+    );
+
+    expect(res.url).toBe("http://localhost:20128/login?error=oidc_callback_failed");
+    expect(mocks.setDashboardAuthCookie).not.toHaveBeenCalled();
+  });
+
+  it("ignores a trailing slash when comparing the discovery issuer with the configured one", async () => {
+    const res = await signIn(
+      { email: "you@gmail.com", email_verified: true },
+      "you@gmail.com",
+      { issuerUrl: "https://accounts.google.com/" },
+    );
+
+    expect(res.url).toBe("http://localhost:20128/dashboard");
   });
 
   it("refuses a Google account that is not on the list", async () => {
@@ -342,11 +408,41 @@ describe("verifyOidcIdToken", () => {
   });
 });
 
-describe("Google OIDC-only install without an allowlist (upgrade path)", () => {
-  it("does not count Google OIDC as usable until allowed emails are set", () => {
+describe("OIDC-only install without an allowlist (upgrade path)", () => {
+  const CORP_SETTINGS = { ...OIDC_SETTINGS, oidcIssuerUrl: "https://auth.example.com" };
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("does not count OIDC as usable until allowed emails are set, for any provider", () => {
     expect(isOidcLoginUsable({ ...OIDC_SETTINGS })).toBe(false);
     expect(isOidcLoginUsable({ ...OIDC_SETTINGS, oidcAllowedEmails: "me@gmail.com" })).toBe(true);
-    expect(isOidcLoginUsable({ ...OIDC_SETTINGS, oidcIssuerUrl: "https://auth.example.com" })).toBe(true);
+    expect(isOidcLoginUsable({ ...CORP_SETTINGS })).toBe(false);
+    expect(isOidcLoginUsable({ ...CORP_SETTINGS, oidcAllowedEmails: "@example.com" })).toBe(true);
+  });
+
+  it("counts a non-Google provider as usable without a list only with OIDC_ALLOW_ANY_USER, never Google", () => {
+    vi.stubEnv("OIDC_ALLOW_ANY_USER", "true");
+
+    expect(isOidcLoginUsable({ ...CORP_SETTINGS })).toBe(true);
+    expect(isOidcLoginUsable({ ...OIDC_SETTINGS })).toBe(false);
+  });
+
+  it("keeps password login open for a non-Google OIDC-only install that has no list yet", async () => {
+    mocks.getSettings.mockResolvedValue({
+      ...CORP_SETTINGS,
+      authMode: "sso",
+      password: bcrypt.hashSync("admin-pw", 4),
+    });
+
+    const res = await passwordLogin({
+      url: "http://localhost:20128/api/auth/login",
+      headers: new Headers({ host: "localhost:20128" }),
+      json: async () => ({ password: "admin-pw" }),
+    });
+
+    expect(res.status).toBe(200);
   });
 
   it("keeps password login open so the admin is not locked out", async () => {

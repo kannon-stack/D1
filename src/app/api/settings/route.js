@@ -4,6 +4,7 @@ import { applyOutboundProxyEnv } from "@/lib/network/outboundProxy";
 import { resetComboRotation } from "open-sse/services/combo.js";
 import bcrypt from "bcryptjs";
 import { getPublicOrigin } from "@/lib/auth/publicOrigin";
+import { isOidcAllowAnyUserEnabled } from "@/lib/auth/authMode";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -29,6 +30,7 @@ export async function GET(request) {
       enableRequestLogs,
       enableTranslator,
       hasPassword: !!password,
+      oidcAllowAnyUser: isOidcAllowAnyUserEnabled(),
       // Lets the profile page show the exact redirect URI / ACS URL the server will send.
       authPublicOrigin: request ? getPublicOrigin(request) : "",
     }, { headers: SETTINGS_RESPONSE_HEADERS });

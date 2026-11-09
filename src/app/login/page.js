@@ -12,7 +12,7 @@ const LOGIN_ERROR_MESSAGES = {
   oidc_start_failed: "Could not start OIDC sign-in. Check the server log for details.",
   oidc_callback_failed: "OIDC sign-in failed. Check the server log for details.",
   oidc_email_not_allowed: "This account is not allowed to sign in to this dashboard.",
-  oidc_allowlist_required: "Google sign-in is turned off until allowed emails are set in Profile → OIDC.",
+  oidc_allowlist_required: "OIDC sign-in is turned off until allowed emails are set in Profile → OIDC.",
   saml_not_configured: "SAML sign-in is not enabled or its configuration is incomplete.",
   saml_missing_response: "The identity provider did not return a SAML response. Please try again.",
   saml_start_failed: "Could not start SAML sign-in. Check the server log for details.",

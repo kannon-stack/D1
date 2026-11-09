@@ -1,7 +1,16 @@
+import { hasTrustedPeerHeaders } from "./trustedPeer.js";
+
 // Origin the browser uses to reach this server, for every browser-facing auth URL
 // (OIDC redirect_uri, SAML ACS/metadata, post-login and error redirects).
 // BASE_URL / NEXT_PUBLIC_BASE_URL are deliberately ignored: they are the internal
 // sync URL (usually http://localhost:20128), not the address the browser is on.
+//
+// X-Forwarded-Host / X-Forwarded-Proto are client-controlled unless a reverse proxy set
+// them, so they are honored only when custom-server.js proves the TCP peer is a local
+// proxy (same trust rule as X-Forwarded-For), or AUTH_TRUST_FORWARDED_HEADERS=true says
+// the proxy is elsewhere (e.g. another container) and overwrites them. Otherwise the
+// Host header and the request protocol are used; set AUTH_PUBLIC_URL for TLS-terminating
+// proxies the server cannot see.
 
 function trimTrailingSlashes(value) {
   return (value || "").trim().replace(/\/+$/, "");
@@ -10,6 +19,11 @@ function trimTrailingSlashes(value) {
 // Chained proxies append to forwarded headers ("https,http"); the first hop is the client's.
 function firstHeaderValue(request, name) {
   return (request?.headers?.get?.(name) || "").split(",")[0].trim();
+}
+
+function trustsForwardedHeaders(request) {
+  if (process.env.AUTH_TRUST_FORWARDED_HEADERS === "true") return true;
+  return hasTrustedPeerHeaders(request) && request?.headers?.get?.("x-9r-loopback-proxy") === "1";
 }
 
 export function getPublicOrigin(request) {
@@ -25,9 +39,11 @@ export function getPublicOrigin(request) {
   }
 
   const requestUrl = new URL(request.url);
-  const host = firstHeaderValue(request, "x-forwarded-host") || firstHeaderValue(request, "host");
+  const trustForwarded = trustsForwardedHeaders(request);
+  const host = (trustForwarded && firstHeaderValue(request, "x-forwarded-host")) || firstHeaderValue(request, "host");
   if (host) {
-    const protocol = (firstHeaderValue(request, "x-forwarded-proto") || requestUrl.protocol).replace(/:$/, "");
+    const forwardedProto = trustForwarded ? firstHeaderValue(request, "x-forwarded-proto") : "";
+    const protocol = (forwardedProto || requestUrl.protocol).replace(/:$/, "");
     try {
       return new URL(`${protocol}://${host}`).origin;
     } catch {

@@ -26,14 +26,54 @@ describe("getPublicOrigin", () => {
       .toBe("https://router.example.com");
   });
 
-  it("prefers forwarded host and proto, using the first value of comma-joined headers", () => {
-    vi.stubEnv("AUTH_PUBLIC_URL", "");
-
-    expect(getPublicOrigin(request("http://localhost:20128/x", {
+  describe("forwarded headers", () => {
+    const forwarded = {
       host: "localhost:20128",
       "x-forwarded-host": "router.example.com, 127.0.0.1:20128",
       "x-forwarded-proto": "https,http",
-    }))).toBe("https://router.example.com");
+    };
+    const url = "http://localhost:20128/x";
+
+    it("ignores X-Forwarded-Host/Proto from a client that is not a trusted proxy", () => {
+      vi.stubEnv("AUTH_PUBLIC_URL", "");
+      vi.stubEnv("NINEROUTER_PEER_TOKEN", "peer-token");
+
+      // No proof at all, e.g. a direct request from the internet.
+      expect(getPublicOrigin(request(url, forwarded))).toBe("http://localhost:20128");
+      // Claiming to be a loopback proxy without the per-process token is just input.
+      expect(getPublicOrigin(request(url, { ...forwarded, "x-9r-loopback-proxy": "1" })))
+        .toBe("http://localhost:20128");
+      expect(getPublicOrigin(request(url, { ...forwarded, "x-9r-loopback-proxy": "1", "x-9r-peer-token": "guess" })))
+        .toBe("http://localhost:20128");
+      // A valid token alone only proves custom-server.js ran, not that the peer is a proxy.
+      expect(getPublicOrigin(request(url, { ...forwarded, "x-9r-peer-token": "peer-token" })))
+        .toBe("http://localhost:20128");
+    });
+
+    it("honors them, taking the first value of comma-joined headers, behind a loopback proxy", () => {
+      vi.stubEnv("AUTH_PUBLIC_URL", "");
+      vi.stubEnv("NINEROUTER_PEER_TOKEN", "peer-token");
+
+      expect(getPublicOrigin(request(url, {
+        ...forwarded,
+        "x-9r-peer-token": "peer-token",
+        "x-9r-loopback-proxy": "1",
+      }))).toBe("https://router.example.com");
+    });
+
+    it("honors them when AUTH_TRUST_FORWARDED_HEADERS=true (proxy on another host or container)", () => {
+      vi.stubEnv("AUTH_PUBLIC_URL", "");
+      vi.stubEnv("AUTH_TRUST_FORWARDED_HEADERS", "true");
+
+      expect(getPublicOrigin(request(url, forwarded))).toBe("https://router.example.com");
+    });
+
+    it("lets AUTH_PUBLIC_URL win over trusted forwarded headers", () => {
+      vi.stubEnv("AUTH_PUBLIC_URL", "https://auth.example.org");
+      vi.stubEnv("AUTH_TRUST_FORWARDED_HEADERS", "true");
+
+      expect(getPublicOrigin(request(url, forwarded))).toBe("https://auth.example.org");
+    });
   });
 
   it("uses the request protocol when no forwarded proto is sent", () => {

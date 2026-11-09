@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import zlib from "node:zlib";
+import { SAML } from "@node-saml/node-saml";
 import {
   buildSamlAuthorizeUrl,
   formatX509Certificate,
@@ -98,17 +99,48 @@ describe("SAML 2.0 Auth Engine Utilities", () => {
       ).rejects.toThrow(/InResponseTo is not valid/);
     });
 
-    it("accepts an issued request ID once, so a captured response cannot be replayed", async () => {
+    it("lets an issued request ID past the InResponseTo check, to signature validation", async () => {
       const id = await issueRequestId();
-      const samlResponse = response(` InResponseTo="${id}"`);
 
-      // Gets past the InResponseTo check, then fails on the (missing) signature.
-      const first = await validateSamlResponse(req, { SAMLResponse: samlResponse }, settings).catch((e) => e);
-      expect(first.message).toMatch(/signature/i);
+      // The certificate above is a placeholder, so validation fails later, on the
+      // certificate/signature. Which message node-saml uses varies by version; the point
+      // is that it is not an InResponseTo error.
+      const error = await validateSamlResponse(req, { SAMLResponse: response(` InResponseTo="${id}"`) }, settings)
+        .catch((e) => e);
+      expect(error).toBeInstanceOf(Error);
+      expect(error.message).not.toMatch(/InResponseTo/);
+    });
 
-      await expect(
-        validateSamlResponse(req, { SAMLResponse: samlResponse }, settings)
-      ).rejects.toThrow(/InResponseTo is not valid/);
+    // node-saml is stubbed here: a signed IdP response cannot be built with a placeholder
+    // certificate, and what is under test is this module's single-use bookkeeping around
+    // a response node-saml has already accepted.
+    describe("after node-saml accepts a response", () => {
+      const accept = (profile) => vi.spyOn(SAML.prototype, "validatePostResponseAsync").mockResolvedValue({ profile });
+
+      it("consumes the request ID, so a captured response cannot be replayed", async () => {
+        const id = await issueRequestId();
+        const spy = accept({ inResponseTo: id, email: "admin@example.com" });
+        try {
+          const samlResponse = response(` InResponseTo="${id}"`);
+
+          await expect(validateSamlResponse(req, { SAMLResponse: samlResponse }, settings))
+            .resolves.toMatchObject({ inResponseTo: id });
+          await expect(validateSamlResponse(req, { SAMLResponse: samlResponse }, settings))
+            .rejects.toThrow(/already used/);
+        } finally {
+          spy.mockRestore();
+        }
+      });
+
+      it("rejects an accepted response that names no sign-in request", async () => {
+        const spy = accept({ email: "admin@example.com" });
+        try {
+          await expect(validateSamlResponse(req, { SAMLResponse: response("") }, settings))
+            .rejects.toThrow(/does not answer a sign-in request/);
+        } finally {
+          spy.mockRestore();
+        }
+      });
     });
 
     it("throws error if samlCert is not configured", async () => {

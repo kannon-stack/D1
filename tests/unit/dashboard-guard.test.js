@@ -289,6 +289,16 @@ describe("dashboard guard cross-site writes", () => {
     expect(response.status).toBe(403);
   });
 
+  it("blocks a same-site POST (another port or subdomain of the same host) with requireLogin=false", async () => {
+    mocks.getSettings.mockResolvedValue({ requireLogin: false });
+
+    const response = await proxy(apiRequest("POST", { "sec-fetch-site": "same-site", origin: "http://localhost:3000" }));
+
+    expect(response.status).toBe(403);
+    // Reading is unaffected.
+    expect(await proxy(apiRequest("GET", { "sec-fetch-site": "same-site" }))).toBe(mocks.nextResponse);
+  });
+
   it("allows same-origin, header-less and read-only requests with requireLogin=false", async () => {
     mocks.getSettings.mockResolvedValue({ requireLogin: false });
 
